@@ -126,6 +126,8 @@ def test_phase1_check_passes(email_db, fake_smtp, monkeypatch, capsys):
     from onewrld import acceptance
 
     # The 'tests' step would re-run this whole suite inside itself; stub it here.
+    # The preflight inspects the real 'public' schema, which varies by machine; stub it too.
+    monkeypatch.setattr(acceptance, "_preflight", lambda s: None)
     monkeypatch.setattr(acceptance, "CHECKS", [
         c if c[0] != "tests" else ("tests", lambda s: (True, "stubbed"))
         for c in acceptance.CHECKS])

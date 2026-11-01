@@ -42,7 +42,8 @@ def _tests(settings: Settings) -> tuple[bool, str]:
 
 def _kill_drill(settings: Settings) -> tuple[bool, str]:
     if safety.is_halted(settings):
-        return False, "kill switch is already ON; run `resume` first, then re-run this check"
+        return False, (f"kill switch is already ON ({safety.halt_reason(settings)}). "
+                       "Run `python -m onewrld resume \"checked\"` then re-run this check")
     safety.halt(settings, "phase1-check drill")
     try:
         safety.outward_action(settings, "drill_post", lambda: "should never run")
@@ -93,7 +94,32 @@ CHECKS: list[tuple[str, Callable[[Settings], tuple[bool, str]]]] = [
 ]
 
 
+def _preflight(settings: Settings) -> str | None:
+    """Problems that make every later check fail for the same reason. Fix these first."""
+    if not settings.database_url:
+        return "DATABASE_URL is not set in .env (RUNBOOK section 6)."
+    try:
+        if db.misplaced_tables(settings, "public"):
+            return ("Old tables from bug M-004 are still in 'public'. Run this first:\n"
+                    "    python -m onewrld repair-schema --yes\n"
+                    "then run phase1-check again.")
+    except Exception as e:
+        return f"Cannot reach the database: {e}"
+    halted, reason = safety.halt_status(settings)
+    if halted:
+        return (f"The kill switch is ON ({reason}).\n"
+                "    Likely left over from an earlier failed run. If you didn't turn it on on\n"
+                "    purpose, run:   python -m onewrld resume \"checked, leftover from testing\"\n"
+                "    then run phase1-check again.")
+    return None
+
+
 def run(settings: Settings) -> bool:
+    problem = _preflight(settings)
+    if problem:
+        print("STOP: one thing to fix before the drills can run:\n")
+        print("    " + problem)
+        return False
     all_ok = True
     for name, fn in CHECKS:
         try:
@@ -102,5 +128,6 @@ def run(settings: Settings) -> bool:
             ok, detail = False, f"{type(e).__name__}: {e}"
         all_ok &= ok
         print(f"{'[PASS]' if ok else '[FAIL]'} {name:<18} {detail}")
-    print("\nPhase 1:", "ACCEPTED" if all_ok else "NOT YET; fix the [FAIL] lines above")
+    print("\nPhase 1:", "ACCEPTED" if all_ok else
+          "NOT YET. Run `python -m onewrld diagnose` and paste the whole output to Claude.")
     return all_ok

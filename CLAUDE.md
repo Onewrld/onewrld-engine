@@ -28,6 +28,8 @@ No cringe slang, no emoji spam, no fake urgency. Reads like a serious person wro
 - Kill switch (`python -m onewrld kill`) beats everything.
 - Secrets only in `.env` (git-ignored). Never in code, docs, or commits.
 - Every module has tests; `python -m onewrld test` runs them all.
+- Tests never read or write anything outside their own throwaway schema or temp folder (M-004, M-005).
+- When something fails on the owner's PC, ask for `python -m onewrld diagnose` output before guessing.
 - No unbounded loops, spend, or posting. Jobs must be idempotent (running twice never double-posts).
 - No scraping, browser bots, fake engagement, or hidden-ownership accounts.
 

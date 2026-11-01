@@ -16,3 +16,6 @@ __pycache__/
 venv/
 *.egg-info/
 .pytest_cache/
+
+# Diagnose report (local only)
+diagnose.txt

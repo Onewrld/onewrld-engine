@@ -29,3 +29,13 @@ Every failure gets: what happened · root cause · fix · regression test that p
   - A `repair-schema --yes` command removes only our own named tables from `public`, and only if `public.schema_migrations` proves they're ours. Then it recreates them in `engine`.
   - `health` fails loudly if misplaced tables exist.
 - **Regression tests:** `test_schema_is_set_explicitly_and_verified`, `test_transaction_pooler_url_is_refused`, `test_repair_removes_only_our_misplaced_tables`, `test_repair_refuses_active_schema`. A guard in `conftest.py` aborts any database test whose tables aren't in its own throwaway schema.
+
+## M-005 (2026-11-01): After the M-004 fix, the owner still saw a kill-switch warning, the job drill failed, and a test failed
+- **Root cause, most likely (reproduced here; to be confirmed with `diagnose` from the owner's PC):**
+  1. A kill switch left ON by an earlier failed run. Health shows that only as a WARN, but it makes both the kill drill and the job drill fail, with an unclear message ("job queued (None)").
+  2. Two tests inspected the real `public` schema, so their result depended on what was in the owner's database. That's the same class of mistake as M-004.
+- **Fix:**
+  - `phase1-check` now runs a preflight: if there are misplaced tables, an unreachable database or a kill switch already ON, it stops and prints the one command to run.
+  - The two tests now use their own empty throwaway schemas.
+  - New `diagnose` command: a paste-safe report (kill flags with reasons, where tables live, recent errors, failing tests) so the next problem is diagnosed from facts instead of guesses.
+- **Rule added to CLAUDE.md:** tests must never read or write anything outside their own throwaway space.

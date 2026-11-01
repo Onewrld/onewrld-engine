@@ -209,5 +209,16 @@ def test_repair_refuses_active_schema(db_settings):
 
 
 def test_unrelated_schema_is_not_treated_as_ours(db_settings):
-    # 'public' in the test database has none of our tables
-    assert db.misplaced_tables(db_settings, "public") == []
+    # A fresh empty schema has none of our tables. (Never inspect 'public' in a test:
+    # its contents depend on the real database, so the result would vary by machine.)
+    import uuid
+
+    empty = f"test_empty_{uuid.uuid4().hex[:6]}"
+    with psycopg.connect(db_settings.database_url, autocommit=True) as c:
+        c.execute(f"CREATE SCHEMA {empty}")
+        c.execute(f"CREATE TABLE {empty}.job (x int)")  # same name, but no proof it's ours
+    try:
+        assert db.misplaced_tables(db_settings, empty) == []
+    finally:
+        with psycopg.connect(db_settings.database_url, autocommit=True) as c:
+            c.execute(f"DROP SCHEMA IF EXISTS {empty} CASCADE")

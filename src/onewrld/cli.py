@@ -16,6 +16,7 @@ Database and jobs:
   test-email             send yourself a test email
   phase1-check           the Phase 1 acceptance test (runs every drill)
   repair-schema --yes    one-time fix for bug M-004 (moves you off misplaced tables)
+  diagnose               a paste-safe report (no secrets) for Claude when something fails
 
 Demos (nothing real is ever posted):
   demo-action            simulate one outward action directly
@@ -202,6 +203,7 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("send-alerts", help="email new alerts now")
     sub.add_parser("test-email", help="send yourself a test email")
     sub.add_parser("phase1-check", help="Phase 1 acceptance test")
+    sub.add_parser("diagnose", help="paste-safe problem report")
     rs = sub.add_parser("repair-schema", help="one-time fix for bug M-004")
     rs.add_argument("--yes", action="store_true")
     sub.add_parser("demo-action", help="simulate a post to see the safety gates")
@@ -250,6 +252,12 @@ def main(argv: list[str] | None = None) -> int:
             return _cmd_send_alerts(settings)
         if args.command == "test-email":
             return _cmd_test_email(settings)
+        if args.command == "diagnose":
+            from onewrld import diagnose
+
+            print(diagnose.collect(settings))
+            print("\nSaved to diagnose.txt. It contains no passwords; safe to paste to Claude.")
+            return 0
         if args.command == "repair-schema":
             return _cmd_repair_schema(settings, args.yes)
         if args.command == "phase1-check":

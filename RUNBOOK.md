@@ -133,3 +133,9 @@ The system sends alerts from your Gmail account to itself, using a Google **app 
 python -m onewrld phase1-check
 ```
 This runs health, all tests, a kill-switch drill, a demo job and a test email. Every line should say `[PASS]` and the last line `Phase 1: ACCEPTED`.
+
+## 11. When something fails
+```
+python -m onewrld diagnose
+```
+This prints a report and saves it to `diagnose.txt`. It never includes passwords or keys, so it's safe to paste to Claude in full.
