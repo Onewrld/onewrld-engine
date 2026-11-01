@@ -12,6 +12,9 @@ Database and jobs:
   jobs                   show the job queue: counts and the 10 latest jobs
   worker                 run queued jobs (stops after --max-jobs or --max-seconds)
   alerts                 show open alerts;  ack ID  marks one as seen
+  send-alerts            email any new alerts now (normally the worker does this)
+  test-email             send yourself a test email
+  phase1-check           the Phase 1 acceptance test (runs every drill)
 
 Demos (nothing real is ever posted):
   demo-action            simulate one outward action directly
@@ -129,6 +132,31 @@ def _cmd_ack(settings, alert_id: int) -> int:
     return 0 if ok else 1
 
 
+def _cmd_send_alerts(settings) -> int:
+    from onewrld import db, notify
+
+    with db.connect(settings) as conn:
+        outcome = notify.flush_alert_emails(settings, conn)
+    print({"sent": "Alert email sent.", "nothing": "No new alerts to email.",
+           "not_configured": "Email not set up yet (RUNBOOK section 9).",
+           "rate_limited": "Held back by the email cap; will go out later.",
+           "busy": "Another worker is sending right now.",
+           "failed": "Sending failed; see the log."}[outcome])
+    return 0 if outcome in ("sent", "nothing", "rate_limited", "busy") else 1
+
+
+def _cmd_test_email(settings) -> int:
+    from onewrld import db, notify
+
+    if settings.database_url:
+        with db.connect(settings) as conn:
+            notify.send_test_email(settings, conn)
+    else:
+        notify.send_test_email(settings)
+    print(f"Test email sent to {settings.alert_email}. Check your inbox (and spam).")
+    return 0
+
+
 def _cmd_test() -> int:
     return subprocess.call([sys.executable, "-m", "pytest", "-q", "-rs"])
 
@@ -151,6 +179,9 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("alerts", help="show open alerts")
     a = sub.add_parser("ack", help="mark an alert as seen")
     a.add_argument("alert_id", type=int)
+    sub.add_parser("send-alerts", help="email new alerts now")
+    sub.add_parser("test-email", help="send yourself a test email")
+    sub.add_parser("phase1-check", help="Phase 1 acceptance test")
     sub.add_parser("demo-action", help="simulate a post to see the safety gates")
     d = sub.add_parser("demo-job", help="queue a fake post job")
     d.add_argument("text", nargs="?", default="hello from the queue")
@@ -193,6 +224,14 @@ def main(argv: list[str] | None = None) -> int:
             return _cmd_alerts(settings)
         if args.command == "ack":
             return _cmd_ack(settings, args.alert_id)
+        if args.command == "send-alerts":
+            return _cmd_send_alerts(settings)
+        if args.command == "test-email":
+            return _cmd_test_email(settings)
+        if args.command == "phase1-check":
+            from onewrld import acceptance
+
+            return 0 if acceptance.run(settings) else 1
     except OnewrldError as e:
         # Known problems get a plain message, not a wall of Python traceback.
         print(f"Problem: {e}")

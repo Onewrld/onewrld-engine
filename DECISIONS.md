@@ -93,3 +93,22 @@ Every decision is written as Decision / Why / What if. Newest at the bottom.
 - **Decision:** Kept your `python-package.yml` and changed it to test Python 3.12 and 3.13, install the project first, and start a throwaway Postgres database so the database tests run too.
 - **Why:** As written it tested Python 3.9 and 3.10 (the project needs 3.11+) and never installed the project, so it would always show a red X. Automatic tests on every push catch breakage before it reaches your PC.
 - **What if:** If GitHub shows a red X, open the failed run and paste the red error text to Claude. Free GitHub accounts include monthly Actions minutes; this run takes about 1 to 2 minutes.
+
+## D-023: Alert emails go through Gmail SMTP with an app password
+- **Why:** Free, uses the account you already have, and nothing to verify (no domain setup). Python's built-in `smtplib` sends it, so there's no extra dependency.
+- **What if:** If Gmail blocks it or you want SMS, switch to a sending service (for example Resend or Twilio) by changing only `notify.send_email`. If the app password leaks, revoke it in Google; nothing else is exposed.
+
+## D-024: Alert emails ignore the kill switch and dry-run mode
+- **Why:** They only ever go to you, and you need them most when the system is stopped or failing. The kill switch is for posting and spending.
+- **What if:** If they become noise, the caps (D-025) and the digest bundling limit them. Never route customer-facing email through this path.
+
+## D-025: Alerts are bundled into digests, capped at 4/hour and 20/day
+- **Why:** A burst of failures must not flood your inbox, or you'll start ignoring it. Held-back alerts wait for the next digest, so none are lost. Only warn/critical are emailed; info goes in the Monday memo.
+- **What if:** If 4/hour is too few during a crisis, run `python -m onewrld alerts` to see everything; adjust the caps in `notify.py`.
+
+## D-026: Log files rotate at 5 MB, keeping 5
+- **Why:** "No unbounded anything" applies to disk too. 30 MB max of logs.
+- **What if:** If we need longer history, alerts and jobs are already kept in the database.
+
+## D-027: Secrets are hidden when settings are printed
+- **Why:** If settings ever get printed or logged, the database URL and app password are left out, so a pasted error can't leak them. A test enforces this.

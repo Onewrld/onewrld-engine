@@ -7,7 +7,7 @@ so there is exactly one place where settings are defined and checked.
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -26,9 +26,19 @@ class ConfigError(Exception):
 class Settings:
     mode: str
     alert_email: str
-    database_url: str  # empty string = not configured yet
+    # repr=False: secrets are never shown if settings get printed or logged.
+    database_url: str = field(repr=False)  # empty string = not configured yet
     db_schema: str  # the Postgres schema (folder of tables) this system uses
     root: Path
+    # Email sending (Gmail with an app password by default). Empty = not configured.
+    smtp_user: str = ""
+    smtp_app_password: str = field(default="", repr=False)
+    smtp_host: str = "smtp.gmail.com"
+    smtp_port: int = 465
+
+    @property
+    def email_configured(self) -> bool:
+        return bool(self.smtp_user and self.smtp_app_password and "@" in self.alert_email)
 
     @property
     def state_dir(self) -> Path:
@@ -64,4 +74,19 @@ def load_settings(root: Path | None = None, env_file: Path | None = None) -> Set
         database_url=os.environ.get("DATABASE_URL", "").strip(),
         db_schema=os.environ.get("DB_SCHEMA", "engine").strip() or "engine",
         root=root,
+        smtp_user=os.environ.get("SMTP_USER", "").strip(),
+        # Google shows app passwords in groups of 4 with spaces; spaces are removed.
+        smtp_app_password=os.environ.get("SMTP_APP_PASSWORD", "").replace(" ", "").strip(),
+        smtp_host=os.environ.get("SMTP_HOST", "smtp.gmail.com").strip() or "smtp.gmail.com",
+        smtp_port=_int_setting("SMTP_PORT", 465),
     )
+
+
+def _int_setting(name: str, default: int) -> int:
+    raw = os.environ.get(name, "").strip()
+    if not raw:
+        return default
+    try:
+        return int(raw)
+    except ValueError:
+        raise ConfigError(f"{name}='{raw}' must be a whole number. Fix it in your .env file.")

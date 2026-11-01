@@ -47,6 +47,12 @@ def check_alert_email(settings: Settings) -> CheckResult:
     return CheckResult("alert_email", WARN, "not set in .env; errors won't reach you")
 
 
+def check_email(settings: Settings) -> CheckResult:
+    if settings.email_configured:
+        return CheckResult("email", PASS, f"sends from {settings.smtp_user}")
+    return CheckResult("email", WARN, "not set up; alerts won't be emailed (RUNBOOK section 9)")
+
+
 def check_ffmpeg() -> CheckResult:
     path = shutil.which("ffmpeg")
     if path:
@@ -83,6 +89,7 @@ def run_all(settings: Settings) -> list[CheckResult]:
         check_mode(settings),
         check_kill_switch(settings),
         check_alert_email(settings),
+        check_email(settings),
         check_ffmpeg(),
         check_disk(settings),
         check_database(settings),

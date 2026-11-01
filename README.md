@@ -20,6 +20,8 @@ Content, distribution, attribution and paid-ads system for ONEWRLD.
 | `src/onewrld/jobs.py` | The job queue: enqueue, claim, retry and backoff, dead-letter. |
 | `src/onewrld/worker.py` | Runs queued jobs; always stops on its own. |
 | `src/onewrld/alerts.py` | Records problems you need to know about. |
+| `src/onewrld/notify.py` | Emails you alert digests, within hourly/daily caps. |
+| `src/onewrld/acceptance.py` | The `phase1-check` drills. |
 | `src/onewrld/handlers/` | The code for each kind of job (demo jobs for now). |
 | `src/onewrld/cli.py` | The commands you type. |
 | `tests/` | Automated tests. Run them with `python -m onewrld test`. |

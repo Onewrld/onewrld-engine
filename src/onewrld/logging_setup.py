@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import json
 import logging
+import logging.handlers
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -48,7 +49,11 @@ def setup_logging(log_dir: Path, level: int = logging.INFO) -> None:
     console.setFormatter(logging.Formatter("%(levelname)-7s %(name)s: %(message)s"))
     root.addHandler(console)
 
-    file_handler = logging.FileHandler(log_dir / "onewrld.jsonl", encoding="utf-8")
+    # Rotating: when the file reaches 5 MB it is renamed .1 and a new one starts; only 5
+    # old files are kept, so logs can never fill your disk.
+    file_handler = logging.handlers.RotatingFileHandler(
+        log_dir / "onewrld.jsonl", maxBytes=5_000_000, backupCount=5, encoding="utf-8"
+    )
     file_handler.setFormatter(JsonLineFormatter())
     root.addHandler(file_handler)
 

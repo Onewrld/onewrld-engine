@@ -13,7 +13,7 @@ import time
 from collections import Counter
 
 import onewrld.handlers  # noqa: F401  (registers all job handlers)
-from onewrld import db, jobs, safety
+from onewrld import db, jobs, notify, safety
 from onewrld.config import Settings
 from onewrld.logging_setup import get_logger
 
@@ -37,6 +37,14 @@ def run_worker(settings: Settings, max_jobs: int = 25, max_seconds: int = 300) -
             if job is None:
                 break  # queue empty
             stats[jobs.run_one(settings, conn, job)] += 1
+
+        # Email any new warn/critical alerts (bundled and capped; see notify.py).
+        try:
+            outcome = notify.flush_alert_emails(settings, conn)
+            if outcome not in ("nothing", "not_configured"):
+                log.info(f"Alert email: {outcome}")
+        except Exception as e:
+            log.error(f"Alert email step failed: {e}")
 
     log.info(f"Worker finished: {dict(stats)}", extra={"fields": {"event": "worker_done"}})
     return stats
