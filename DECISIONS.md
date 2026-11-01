@@ -88,3 +88,8 @@ Every decision is written as Decision / Why / What if. Newest at the bottom.
 ## D-021: Database tests run in a throwaway schema
 - **Why:** You can run the full test suite against your real Supabase without any risk to the real `engine` tables. Each test creates `test_xxxxxxxx`, then deletes it.
 - **What if:** If tests are interrupted mid-run, a leftover `test_...` schema may remain. It is safe to delete in Supabase.
+
+## D-022: Keep the owner's GitHub Actions workflow, fixed so it can pass
+- **Decision:** Kept your `python-package.yml` and changed it to test Python 3.12 and 3.13, install the project first, and start a throwaway Postgres database so the database tests run too.
+- **Why:** As written it tested Python 3.9 and 3.10 (the project needs 3.11+) and never installed the project, so it would always show a red X. Automatic tests on every push catch breakage before it reaches your PC.
+- **What if:** If GitHub shows a red X, open the failed run and paste the red error text to Claude. Free GitHub accounts include monthly Actions minutes; this run takes about 1 to 2 minutes.
