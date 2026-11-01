@@ -15,6 +15,7 @@ Database and jobs:
   send-alerts            email any new alerts now (normally the worker does this)
   test-email             send yourself a test email
   phase1-check           the Phase 1 acceptance test (runs every drill)
+  repair-schema --yes    one-time fix for bug M-004 (moves you off misplaced tables)
 
 Demos (nothing real is ever posted):
   demo-action            simulate one outward action directly
@@ -157,6 +158,25 @@ def _cmd_test_email(settings) -> int:
     return 0
 
 
+def _cmd_repair_schema(settings, yes: bool) -> int:
+    from onewrld import db
+
+    stray = db.misplaced_tables(settings, "public")
+    if not stray:
+        print("Nothing to repair: no misplaced tables in 'public'.")
+        return 0
+    print("Found ONEWRLD tables in the wrong place ('public'): " + ", ".join(stray))
+    print("They only hold Phase 1 demo/test data. They will be removed and recreated in "
+          f"'{settings.db_schema}'.")
+    if not yes:
+        print("Run again with --yes to do it:  python -m onewrld repair-schema --yes")
+        return 1
+    db.remove_misplaced_tables(settings, "public")
+    applied = db.migrate(settings)
+    print(f"Done. Removed {len(stray)} misplaced table(s); created: {', '.join(applied) or 'none'}")
+    return 0
+
+
 def _cmd_test() -> int:
     return subprocess.call([sys.executable, "-m", "pytest", "-q", "-rs"])
 
@@ -182,6 +202,8 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("send-alerts", help="email new alerts now")
     sub.add_parser("test-email", help="send yourself a test email")
     sub.add_parser("phase1-check", help="Phase 1 acceptance test")
+    rs = sub.add_parser("repair-schema", help="one-time fix for bug M-004")
+    rs.add_argument("--yes", action="store_true")
     sub.add_parser("demo-action", help="simulate a post to see the safety gates")
     d = sub.add_parser("demo-job", help="queue a fake post job")
     d.add_argument("text", nargs="?", default="hello from the queue")
@@ -228,6 +250,8 @@ def main(argv: list[str] | None = None) -> int:
             return _cmd_send_alerts(settings)
         if args.command == "test-email":
             return _cmd_test_email(settings)
+        if args.command == "repair-schema":
+            return _cmd_repair_schema(settings, args.yes)
         if args.command == "phase1-check":
             from onewrld import acceptance
 

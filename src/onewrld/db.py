@@ -45,10 +45,19 @@ def connect(settings: Settings, url: str | None = None) -> Iterator[psycopg.Conn
     `with conn.transaction():` block, which saves all-or-nothing.
     prepare_threshold=None turns off "prepared statements", which Supabase's connection
     pooler doesn't support well. connect_timeout stops us waiting forever on a bad network.
+
+    The schema is set with an explicit `SET search_path` after connecting, then VERIFIED.
+    (An earlier version passed it as a connection option, which Supabase's pooler silently
+    ignores, so tables landed in `public`. See MISTAKES.md M-004.)
     """
     url = url or settings.database_url
     if not url:
         raise PermanentError("DATABASE_URL is not set in .env (see RUNBOOK section 6).")
+    if ":6543/" in url:
+        # Transaction pooler: it resets SET between transactions, so our schema setting
+        # would silently stop applying. Refuse instead of misbehaving.
+        raise PermanentError("DATABASE_URL uses port 6543 (transaction pooler). Use the "
+                             "Session pooler string (port 5432) instead (RUNBOOK section 6).")
     schema = _check_schema_name(settings.db_schema)
     try:
         conn = psycopg.connect(
@@ -57,7 +66,6 @@ def connect(settings: Settings, url: str | None = None) -> Iterator[psycopg.Conn
             autocommit=True,
             prepare_threshold=None,
             connect_timeout=10,
-            options=f"-c search_path={schema}",
             application_name="onewrld-engine",
         )
     except psycopg.OperationalError as e:
@@ -65,9 +73,47 @@ def connect(settings: Settings, url: str | None = None) -> Iterator[psycopg.Conn
         # trimmed so a password can never end up in the logs.
         raise RetryableError(f"Could not connect to database: {str(e).splitlines()[0]}") from None
     try:
+        conn.execute(f"SET search_path TO {schema}")
+        actual = conn.execute("SELECT current_setting('search_path') AS sp").fetchone()["sp"]
+        if actual.strip('"') != schema:
+            raise PermanentError(f"Database schema check failed: expected '{schema}', "
+                                 f"got '{actual}'. Nothing was changed.")
         yield conn
     finally:
         conn.close()
+
+
+OUR_TABLES = ("notification", "approval", "alert", "job", "system_flag", "schema_migrations")
+
+
+def misplaced_tables(settings: Settings, source_schema: str = "public") -> list[str]:
+    """Our tables found in the wrong schema (left over from the M-004 bug).
+    Only counts them if that schema's schema_migrations proves they are ours."""
+    source = _check_schema_name(source_schema)
+    with connect(settings) as conn:
+        found = {r["table_name"] for r in conn.execute(
+            """SELECT table_name FROM information_schema.tables
+               WHERE table_schema = %s AND table_name = ANY(%s)""",
+            (source, list(OUR_TABLES))).fetchall()}
+        if "schema_migrations" not in found:
+            return []
+        ours = conn.execute(
+            f"SELECT 1 FROM {source}.schema_migrations WHERE name = '0001_core.sql'").fetchone()
+    return [t for t in OUR_TABLES if t in found] if ours else []
+
+
+def remove_misplaced_tables(settings: Settings, source_schema: str = "public") -> list[str]:
+    """Drop ONLY our own table names from the wrong schema, in one all-or-nothing step."""
+    source = _check_schema_name(source_schema)
+    if source == settings.db_schema:
+        raise PermanentError("Refusing to remove tables from the active schema.")
+    tables = misplaced_tables(settings, source)
+    if tables:
+        with connect(settings) as conn, conn.transaction():
+            for t in tables:  # names come from OUR_TABLES, never from user input
+                conn.execute(f"DROP TABLE IF EXISTS {source}.{t} CASCADE")
+        log.warning(f"Removed misplaced tables from '{source}': {tables}")
+    return tables
 
 
 def _migration_files(settings: Settings) -> list[Path]:

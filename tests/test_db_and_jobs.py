@@ -160,3 +160,54 @@ def test_unreachable_database_fails_closed(make_settings):
     s = make_settings(DATABASE_URL="postgresql://nobody:x@127.0.0.1:1/none")
     halted, reason = safety.halt_status(s)
     assert halted and "failing safe" in reason
+
+
+# --- schema safety (bug M-004) ------------------------------------------------
+
+def test_schema_is_set_explicitly_and_verified(conn, db_settings):
+    sp = conn.execute("SELECT current_setting('search_path') AS sp").fetchone()["sp"]
+    assert sp == db_settings.db_schema
+
+
+def test_transaction_pooler_url_is_refused(make_settings):
+    from onewrld.errors import PermanentError
+
+    s = make_settings(DATABASE_URL="postgresql://u:p@aws-0-us-east-1.pooler.supabase.com:6543/postgres")
+    with pytest.raises(PermanentError, match="Session pooler"):
+        with db.connect(s):
+            pass
+
+
+def test_repair_removes_only_our_misplaced_tables(db_settings):
+    """Simulate the bug: our tables in a wrong schema next to an unrelated table."""
+    import uuid
+    from dataclasses import replace
+
+    wrong = f"test_wrong_{uuid.uuid4().hex[:6]}"
+    wrong_settings = replace(db_settings, db_schema=wrong)
+    db.migrate(wrong_settings)  # our tables, in the wrong schema
+    with db.connect(wrong_settings) as c:
+        c.execute("CREATE TABLE someone_elses_table (x int)")
+    try:
+        assert "job" in db.misplaced_tables(db_settings, wrong)
+        removed = db.remove_misplaced_tables(db_settings, wrong)
+        assert set(removed) == set(db.OUR_TABLES)
+        assert db.misplaced_tables(db_settings, wrong) == []
+        with db.connect(wrong_settings) as c:  # unrelated table untouched
+            assert c.execute("SELECT to_regclass('someone_elses_table') IS NOT NULL AS ok"
+                             ).fetchone()["ok"]
+    finally:
+        with psycopg.connect(db_settings.database_url, autocommit=True) as c:
+            c.execute(f"DROP SCHEMA IF EXISTS {wrong} CASCADE")
+
+
+def test_repair_refuses_active_schema(db_settings):
+    from onewrld.errors import PermanentError
+
+    with pytest.raises(PermanentError):
+        db.remove_misplaced_tables(db_settings, db_settings.db_schema)
+
+
+def test_unrelated_schema_is_not_treated_as_ours(db_settings):
+    # 'public' in the test database has none of our tables
+    assert db.misplaced_tables(db_settings, "public") == []

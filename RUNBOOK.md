@@ -97,6 +97,13 @@ If you think the password leaked: Supabase → Project Settings → Database →
 
 A **dead** job means the system gave up on it and raised an alert. Nothing is lost; it stays in the table with its error message (`last_error`) for you or Claude to inspect.
 
+## 8a. If health says "old tables found in 'public'"
+That's a one-time leftover from bug M-004. Run:
+```
+python -m onewrld repair-schema --yes
+```
+It removes only ONEWRLD's own tables from the wrong place and recreates them correctly. Only Phase 1 demo data is affected.
+
 ## 8. If the kill switch says ON and you didn't turn it on
 - "database tables not created yet": run `python -m onewrld migrate`.
 - "failing safe": the system can't reach the database, so it refuses to act. Check your internet, then run `python -m onewrld health`.

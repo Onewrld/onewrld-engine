@@ -112,3 +112,7 @@ Every decision is written as Decision / Why / What if. Newest at the bottom.
 
 ## D-027: Secrets are hidden when settings are printed
 - **Why:** If settings ever get printed or logged, the database URL and app password are left out, so a pasted error can't leak them. A test enforces this.
+
+## D-028: Schema is set by an explicit command and verified on every connection
+- **Why:** Bug M-004: a connection option was silently ignored by Supabase's pooler. Explicit `SET` + check means a wrong schema causes an error, never silent damage.
+- **What if:** If we ever must use the transaction pooler (port 6543), switch to fully qualified table names (`engine.job`). Until then, port 6543 is refused.

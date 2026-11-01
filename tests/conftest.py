@@ -53,6 +53,12 @@ def db_settings(make_settings):
     schema = f"test_{uuid.uuid4().hex[:8]}"
     settings = make_settings(DATABASE_URL=url, DB_SCHEMA=schema)
     db.migrate(settings)
+    # Guard: prove the tables really went into the throwaway schema, never real ones.
+    with db.connect(settings) as c:
+        where = c.execute(
+            """SELECT n.nspname AS s FROM pg_class t JOIN pg_namespace n ON n.oid = t.relnamespace
+               WHERE t.oid = to_regclass('job')""").fetchone()
+    assert where and where["s"] == schema, f"TEST ISOLATION BROKEN: job table is in {where}"
     try:
         yield settings
     finally:

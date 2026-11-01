@@ -77,6 +77,13 @@ def check_database(settings: Settings) -> CheckResult:
             pending = db.pending_migrations(settings, conn)
     except Exception as e:
         return CheckResult("database", FAIL, f"cannot connect: {e}")
+    try:
+        stray = db.misplaced_tables(settings, "public")
+    except Exception:
+        stray = []
+    if stray:
+        return CheckResult("database", FAIL, "old tables found in 'public' (bug M-004): "
+                           "run `python -m onewrld repair-schema --yes`")
     if pending:
         names = ", ".join(p.name for p in pending)
         return CheckResult("database", WARN, f"connected; run `migrate` to apply: {names}")
