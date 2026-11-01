@@ -1,0 +1,18 @@
+# Secrets: NEVER commit these
+.env
+.env.*
+!.env.example
+
+# Runtime state, logs, media (local only)
+state/
+logs/
+media/
+renders/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+*.egg-info/
+.pytest_cache/
