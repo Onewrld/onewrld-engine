@@ -9,6 +9,7 @@ description = "ONEWRLD content, distribution, attribution and ads system"
 requires-python = ">=3.11"
 dependencies = [
     "python-dotenv>=1.0",
+    "psycopg[binary]>=3.2",
 ]
 
 [project.optional-dependencies]

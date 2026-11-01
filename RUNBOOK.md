@@ -65,3 +65,39 @@ pip install -e ".[dev]"
 python -m onewrld test
 ```
 If any test fails after an update, run `kill` first, then tell Claude what the output said.
+
+## 6. Connecting your Supabase database (one time)
+1. Open your **onewrld-engine** project at supabase.com/dashboard.
+2. Click the **Connect** button at the top of the page.
+3. Find the **Session pooler** connection string and copy the URI. It looks like:
+   `postgresql://postgres.abcdefgh:[YOUR-PASSWORD]@aws-0-us-east-1.pooler.supabase.com:5432/postgres`
+   Use **Session pooler**, not "Direct connection". Direct connection needs IPv6, which many home internet connections don't have.
+4. Open your settings: `notepad .env`
+5. Paste the URI after `DATABASE_URL=`, then replace `[YOUR-PASSWORD]` (including the brackets) with your database password. Save.
+6. Create the tables:
+   ```
+   python -m onewrld migrate
+   ```
+7. Check:
+   ```
+   python -m onewrld health
+   ```
+   You want `[ OK ] database  connected, schema 'engine' up to date`.
+
+Never paste the `.env` contents or the connection string to anyone, Claude included.
+If you think the password leaked: Supabase → Project Settings → Database → **Reset database password**, then update `.env`.
+
+## 7. The job queue
+| Command | What it does |
+|---|---|
+| `python -m onewrld jobs` | Shows queued, running, done and dead jobs, plus the latest 10. |
+| `python -m onewrld worker` | Runs waiting jobs. Stops by itself after 25 jobs or 5 minutes. |
+| `python -m onewrld alerts` | Shows problems you haven't looked at yet. |
+| `python -m onewrld ack 12` | Marks alert #12 as seen. |
+
+A **dead** job means the system gave up on it and raised an alert. Nothing is lost; it stays in the table with its error message (`last_error`) for you or Claude to inspect.
+
+## 8. If the kill switch says ON and you didn't turn it on
+- "database tables not created yet": run `python -m onewrld migrate`.
+- "failing safe": the system can't reach the database, so it refuses to act. Check your internet, then run `python -m onewrld health`.
+This is deliberate. When the system is unsure, it stops instead of posting.

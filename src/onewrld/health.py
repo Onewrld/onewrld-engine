@@ -61,10 +61,20 @@ def check_disk(settings: Settings) -> CheckResult:
 
 
 def check_database(settings: Settings) -> CheckResult:
-    # Real connection test arrives in Phase 1.2.
     if not settings.database_url:
-        return CheckResult("database", WARN, "not configured yet (Phase 1.2)")
-    return CheckResult("database", WARN, "configured; connection test arrives in Phase 1.2")
+        return CheckResult("database", WARN, "not configured yet (RUNBOOK section 6)")
+    from onewrld import db
+
+    try:
+        with db.connect(settings) as conn:
+            conn.execute("SELECT 1")
+            pending = db.pending_migrations(settings, conn)
+    except Exception as e:
+        return CheckResult("database", FAIL, f"cannot connect: {e}")
+    if pending:
+        names = ", ".join(p.name for p in pending)
+        return CheckResult("database", WARN, f"connected; run `migrate` to apply: {names}")
+    return CheckResult("database", PASS, f"connected, schema '{settings.db_schema}' up to date")
 
 
 def run_all(settings: Settings) -> list[CheckResult]:

@@ -27,6 +27,7 @@ class Settings:
     mode: str
     alert_email: str
     database_url: str  # empty string = not configured yet
+    db_schema: str  # the Postgres schema (folder of tables) this system uses
     root: Path
 
     @property
@@ -61,5 +62,6 @@ def load_settings(root: Path | None = None, env_file: Path | None = None) -> Set
         mode=mode,
         alert_email=os.environ.get("ALERT_EMAIL", "").strip(),
         database_url=os.environ.get("DATABASE_URL", "").strip(),
+        db_schema=os.environ.get("DB_SCHEMA", "engine").strip() or "engine",
         root=root,
     )

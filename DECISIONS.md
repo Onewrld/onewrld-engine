@@ -12,8 +12,8 @@ Every decision is written as Decision / Why / What if. Newest at the bottom.
 - **Why:** A bug or schema change here can never break the partner portal. Free tier allows it.
 - **What if:** If we hit free-tier limits, upgrade this project only ($25/mo), or move the plain Postgres schema elsewhere.
 
-## D-003: Postgres-backed job queue (no Redis)
-- **Decision:** Jobs live in the database (library: Procrastinate, confirmed in Module 1.2).
+## D-003: Postgres-backed job queue (no Redis). REVISED in 1.2, see D-015
+- **Decision:** Jobs live in the database.
 - **Why:** One less service to run and pay for; jobs are visible in the Supabase table viewer; survives restarts.
 - **What if:** If it ever bottlenecks, move jobs to a dedicated queue; job code is plain functions.
 
@@ -57,3 +57,34 @@ Every decision is written as Decision / Why / What if. Newest at the bottom.
 ## D-014: The command line is `python -m onewrld <command>`, not `make`
 - **Why:** `make` doesn't exist on Windows by default. Python commands work everywhere.
 - **What if:** none.
+
+## D-015: A small custom job queue (~200 lines) instead of the Procrastinate library
+- **Decision:** One `job` table plus `jobs.py`, using Postgres `FOR UPDATE SKIP LOCKED` (a standard database feature that lets several workers take jobs without ever taking the same one).
+- **Why:** You can read every line and see every job in the Supabase table viewer. It has no async code and no extra schema to learn. It covers exactly what we need: idempotent enqueue, retries with backoff, dead-letter, crash recovery. This replaces the earlier plan (D-003) to use Procrastinate, because that library brings concepts you don't need yet.
+- **What if:** If we need scheduling features beyond Phase 5's simple scheduler, or many workers, move to Procrastinate. Handlers are plain functions, so they port unchanged.
+
+## D-016: Our tables live in a separate schema `engine`, with Row Level Security on
+- **Why:** Supabase's public web API only exposes the `public` schema. Keeping our tables in `engine` means your anon/public key can never read jobs, alerts or orders. RLS is a second lock.
+- **What if:** When the dashboard needs data (Phase 6), we add specific read-only views or policies on purpose, never by opening tables.
+
+## D-017: The kill switch fails closed
+- **Decision:** If the database is configured but unreachable (or not migrated), the system treats itself as halted.
+- **Why:** When unsure, stop. A missed post costs nothing; an unwanted post or spend can't be undone.
+- **What if:** If the database is down for a long time, nothing posts. That's intended. `health` tells you why.
+
+## D-018: Each job's work runs outside a database transaction
+- **Why:** If a post goes out and the database then fails, a rollback would "forget" a post that really happened, and a retry would double-post. So the work runs first, and the result is recorded afterwards in its own transaction.
+- **Known gap (handled in Phase 5):** if the PC crashes in the second between a real post and its recording, the job is retried after 30 min. Phase 5 posting jobs will check the platform or posting layer for an existing post before posting again.
+
+## D-019: Tables are added by the module that uses them, not all at once
+- **Decision:** 1.2 creates only the core tables (job, alert, approval, system_flag). Content, post, order and similar tables arrive with their modules.
+- **Why:** Designing 22 tables before we know what each module needs leads to rework. Each table gets explained as it arrives.
+- **What if:** none; migrations make adding tables routine.
+
+## D-020: Supabase "Session pooler" connection, not direct
+- **Why:** Supabase's direct connection is IPv6-only on the free plan (as far as I know; confirm when you connect), and many home ISPs are IPv4. The session pooler works on both.
+- **What if:** If the session pooler causes issues, try the direct string; the code works with either.
+
+## D-021: Database tests run in a throwaway schema
+- **Why:** You can run the full test suite against your real Supabase without any risk to the real `engine` tables. Each test creates `test_xxxxxxxx`, then deletes it.
+- **What if:** If tests are interrupted mid-run, a leftover `test_...` schema may remain. It is safe to delete in Supabase.

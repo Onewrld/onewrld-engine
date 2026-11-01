@@ -15,5 +15,11 @@ Content, distribution, attribution and paid-ads system for ONEWRLD.
 | `src/onewrld/logging_setup.py` | Writes logs to the screen and to `logs/onewrld.jsonl`. |
 | `src/onewrld/errors.py` | Error types: retryable, permanent, halted. |
 | `src/onewrld/health.py` | Health checks behind `python -m onewrld health`. |
+| `src/onewrld/db.py` | Connects to the database and applies migrations. |
+| `db/migrations/` | Numbered SQL files that create and change tables. Each runs once. |
+| `src/onewrld/jobs.py` | The job queue: enqueue, claim, retry and backoff, dead-letter. |
+| `src/onewrld/worker.py` | Runs queued jobs; always stops on its own. |
+| `src/onewrld/alerts.py` | Records problems you need to know about. |
+| `src/onewrld/handlers/` | The code for each kind of job (demo jobs for now). |
 | `src/onewrld/cli.py` | The commands you type. |
 | `tests/` | Automated tests. Run them with `python -m onewrld test`. |

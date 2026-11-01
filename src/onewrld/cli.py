@@ -1,12 +1,21 @@
 """Command line: the buttons you press. Run `python -m onewrld --help` to see them all.
 
-Commands:
+Safety and status:
   health                 show whether everything is OK
   status                 show mode + kill switch in one line
   kill  "reason"         STOP all posting and spending immediately
   resume "reason"        turn the kill switch back off
   test                   run every automated test
-  demo-action            simulate an outward action (shows dry-run + kill switch working)
+
+Database and jobs:
+  migrate                create/update the database tables (safe to run any time)
+  jobs                   show the job queue: counts and the 10 latest jobs
+  worker                 run queued jobs (stops after --max-jobs or --max-seconds)
+  alerts                 show open alerts;  ack ID  marks one as seen
+
+Demos (nothing real is ever posted):
+  demo-action            simulate one outward action directly
+  demo-job "text"        queue a fake post job (run `worker` to process it)
 """
 
 from __future__ import annotations
@@ -14,10 +23,11 @@ from __future__ import annotations
 import argparse
 import subprocess
 import sys
+import uuid
 
 from onewrld import health, safety
 from onewrld.config import ConfigError, load_settings
-from onewrld.errors import HaltedError
+from onewrld.errors import HaltedError, OnewrldError
 from onewrld.logging_setup import setup_logging
 
 ICONS = {health.PASS: "[ OK ]", health.WARN: "[WARN]", health.FAIL: "[FAIL]"}
@@ -33,8 +43,8 @@ def _cmd_health(settings) -> int:
 
 
 def _cmd_status(settings) -> int:
-    kill = "ON" if safety.is_halted(settings) else "off"
-    print(f"mode={settings.mode}  kill_switch={kill}")
+    halted, reason = safety.halt_status(settings)
+    print(f"mode={settings.mode}  kill_switch={'ON (' + str(reason) + ')' if halted else 'off'}")
     return 0
 
 
@@ -53,8 +63,74 @@ def _cmd_demo_action(settings) -> int:
     return 0
 
 
+def _cmd_migrate(settings) -> int:
+    from onewrld import db
+
+    applied = db.migrate(settings)
+    print("Applied: " + ", ".join(applied) if applied else "Database already up to date.")
+    return 0
+
+
+def _cmd_jobs(settings) -> int:
+    from onewrld import db, jobs
+
+    with db.connect(settings) as conn:
+        counts = jobs.job_counts(conn)
+        print("Queue:", ", ".join(f"{k}={v}" for k, v in sorted(counts.items())) or "empty")
+        rows = conn.execute(
+            """SELECT id, kind, status, attempts, max_attempts, last_error
+               FROM job ORDER BY id DESC LIMIT 10"""
+        ).fetchall()
+    for r in rows:
+        err = f"  last error: {r['last_error'][:80]}" if r["last_error"] else ""
+        print(f"  #{r['id']:<5} {r['kind']:<12} {r['status']:<8} "
+              f"attempt {r['attempts']}/{r['max_attempts']}{err}")
+    return 0
+
+
+def _cmd_worker(settings, max_jobs: int, max_seconds: int) -> int:
+    from onewrld.worker import run_worker
+
+    stats = run_worker(settings, max_jobs=max_jobs, max_seconds=max_seconds)
+    print("Worker result:", dict(stats) or "nothing to do")
+    return 0
+
+
+def _cmd_demo_job(settings, text: str) -> int:
+    from onewrld import db, jobs
+
+    with db.connect(settings) as conn:
+        job_id, created = jobs.enqueue(
+            conn, "demo.post", {"text": text}, idempotency_key=f"demo:{uuid.uuid4()}"
+        )
+    print(f"Queued job #{job_id}. Run `python -m onewrld worker` to process it.")
+    return 0
+
+
+def _cmd_alerts(settings) -> int:
+    from onewrld import alerts, db
+
+    with db.connect(settings) as conn:
+        rows = alerts.open_alerts(conn)
+    if not rows:
+        print("No open alerts.")
+    for r in rows:
+        print(f"  #{r['id']:<5} [{r['severity']}] {r['source']}: {r['message']}  "
+              f"({r['created_at']:%Y-%m-%d %H:%M})")
+    return 0
+
+
+def _cmd_ack(settings, alert_id: int) -> int:
+    from onewrld import alerts, db
+
+    with db.connect(settings) as conn:
+        ok = alerts.acknowledge(conn, alert_id)
+    print(f"Alert #{alert_id} marked as seen." if ok else f"No open alert #{alert_id}.")
+    return 0 if ok else 1
+
+
 def _cmd_test() -> int:
-    return subprocess.call([sys.executable, "-m", "pytest", "-q"])
+    return subprocess.call([sys.executable, "-m", "pytest", "-q", "-rs"])
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -67,7 +143,17 @@ def main(argv: list[str] | None = None) -> int:
     r = sub.add_parser("resume", help="turn the kill switch off")
     r.add_argument("reason", help="why it is safe to resume")
     sub.add_parser("test", help="run all automated tests")
+    sub.add_parser("migrate", help="create/update database tables")
+    sub.add_parser("jobs", help="show the job queue")
+    w = sub.add_parser("worker", help="run queued jobs (bounded)")
+    w.add_argument("--max-jobs", type=int, default=25)
+    w.add_argument("--max-seconds", type=int, default=300)
+    sub.add_parser("alerts", help="show open alerts")
+    a = sub.add_parser("ack", help="mark an alert as seen")
+    a.add_argument("alert_id", type=int)
     sub.add_parser("demo-action", help="simulate a post to see the safety gates")
+    d = sub.add_parser("demo-job", help="queue a fake post job")
+    d.add_argument("text", nargs="?", default="hello from the queue")
     args = parser.parse_args(argv)
 
     if args.command == "test":
@@ -80,18 +166,35 @@ def main(argv: list[str] | None = None) -> int:
         return 1
     setup_logging(settings.log_dir)
 
-    if args.command == "health":
-        return _cmd_health(settings)
-    if args.command == "status":
-        return _cmd_status(settings)
-    if args.command == "kill":
-        safety.halt(settings, args.reason)
-        print("Kill switch ON. All posting and spending is blocked.")
-        return 0
-    if args.command == "resume":
-        safety.resume(settings, args.reason)
-        print("Kill switch off.")
-        return 0
-    if args.command == "demo-action":
-        return _cmd_demo_action(settings)
+    try:
+        if args.command == "health":
+            return _cmd_health(settings)
+        if args.command == "status":
+            return _cmd_status(settings)
+        if args.command == "kill":
+            safety.halt(settings, args.reason)
+            print("Kill switch ON. All posting and spending is blocked.")
+            return 0
+        if args.command == "resume":
+            safety.resume(settings, args.reason)
+            print("Kill switch off.")
+            return 0
+        if args.command == "demo-action":
+            return _cmd_demo_action(settings)
+        if args.command == "migrate":
+            return _cmd_migrate(settings)
+        if args.command == "jobs":
+            return _cmd_jobs(settings)
+        if args.command == "worker":
+            return _cmd_worker(settings, args.max_jobs, args.max_seconds)
+        if args.command == "demo-job":
+            return _cmd_demo_job(settings, args.text)
+        if args.command == "alerts":
+            return _cmd_alerts(settings)
+        if args.command == "ack":
+            return _cmd_ack(settings, args.alert_id)
+    except OnewrldError as e:
+        # Known problems get a plain message, not a wall of Python traceback.
+        print(f"Problem: {e}")
+        return 1
     return 1
