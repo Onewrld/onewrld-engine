@@ -7,7 +7,7 @@ _Last updated: 2026-11-02_
 |---|---|
 | Phase | 2: Brand Brain |
 | Done | Phase 0 plan. Module 1.1 (skeleton and safety). Module 1.2 (database, job queue, worker, alerts, database kill switch). Module 1.3 (email alerts with caps, log rotation, `phase1-check`; 43 tests pass) |
-| Current | Owner sends `captions feedback` output; Claude writes caption batch 2 from it |
+| Current | Waiting on the owner: what Fall of Icarus means to him (1 to 2 sentences). Then caption batch 2 |
 | Next | Shoot day (Fall of Icarus shot list), then Phase 3: Video Studio |
 | Blockers | None |
 
@@ -31,6 +31,7 @@ _Last updated: 2026-11-02_
 - Meta app and tokens, posting-layer API key, X API keys: Phase 5
 
 ## Open questions for owner
+- **What does Fall of Icarus mean to you?** (blocks story captions, L-001)
 - Personal/founder handles (brand handles found: IG @onewrld.us, TikTok @onewrld.US, X @onewrldus, YT @onewrldus)
 - Is the font in the logo/graphics the same as the website font (Assistant)?
 - Next drop (about mid-Dec): name and what it means
