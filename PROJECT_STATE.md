@@ -1,19 +1,19 @@
 # PROJECT_STATE.md
 
-_Last updated: 2026-11-01_
+_Last updated: 2026-11-02_
 
 ## Where we are
 | | |
 |---|---|
-| Phase | 1: Foundation |
+| Phase | 2: Brand Brain (not started) |
 | Done | Phase 0 plan. Module 1.1 (skeleton and safety). Module 1.2 (database, job queue, worker, alerts, database kill switch). Module 1.3 (email alerts with caps, log rotation, `phase1-check`; 43 tests pass) |
-| Current | Owner sets up email (RUNBOOK section 9), then runs `phase1-check` |
+| Current | Collecting Phase 2 inputs from the owner |
 | Next | Phase 2: Brand Brain (brand bible, hook library, caption generator, scoring, feedback) |
-| Blockers | Gmail app password in the owner's `.env` |
+| Blockers | Anthropic API key (with spend limit); brand material (logo, fonts, colors, captions liked and disliked) |
 
 ## Phase checklist
 - [x] Phase 0: Plan and feasibility
-- [ ] Phase 1: Foundation. [x] 1.1 skeleton and safety · [x] 1.2 database and job queue · [x] 1.3 email alerts and acceptance (owner to run `phase1-check`)
+- [x] Phase 1: Foundation (owner's PC reported good on 2026-11-02, after fixes M-004 and M-005). [x] 1.1 skeleton and safety · [x] 1.2 database and job queue · [x] 1.3 email alerts and acceptance (owner to run `phase1-check`)
 - [ ] Phase 2: Brand Brain
 - [ ] Phase 3: Video Studio (plus 3.5 manual posting kit)
 - [ ] Phase 4: Attribution
