@@ -1,5 +1,6 @@
 # Caption bank: Fall of Icarus, batch 2. Written 2026-11-02 after the owner's review.
 # Meaning (owner, option A): pride comes before the fall. Discipline, ego in check.
+# Owner-rejected captions were removed after review (still recorded in the database).
 # Style from the voice quiz + approvals: plain statements, product facts, slightly
 # exclusive, no emoji, no call to action, no scarcity talk (sold-out proof is fine).
 
@@ -61,35 +62,13 @@ text = "The stitching is unconventional on purpose. Look closer."
 
 [[captions]]
 pillar = "product"
-text = "Restraint and boldness. That's the whole hoodie."
-
-[[captions]]
-pillar = "product"
 text = "Made heavy so it lasts. Made quiet so it doesn't have to explain itself."
-
-[[captions]]
-pillar = "product"
-text = "Heavy cotton sweats. Darker in the folds, lighter where they catch the light."
 
 [[captions]]
 pillar = "product"
 text = "Wide from the knee down. Stacks over your sneakers without looking sloppy."
 
 # proof (sold-out history is fine; no scarcity pressure)
-[[captions]]
-pillar = "proof"
-fact_check = true
-text = "Every tee and collab we've made sold out. Fall of Icarus is what's left."
-
-# exclusive edge (approved style: "Not for everyone. That's the point.")
-[[captions]]
-pillar = "story"
-text = "Not made for the loud ones."
-
-[[captions]]
-pillar = "story"
-text = "If it needs explaining, it isn't for you."
-
 [[captions]]
 pillar = "gym"
 text = "For people who don't post the work."
