@@ -1,0 +1,98 @@
+# ONEWRLD brand bible: the machine-readable version of the brand.
+# Every caption is scored against this file before it can be used.
+# Edit freely; the scorer re-reads it every time. Keep phrases lowercase.
+
+brand:
+  name: ONEWRLD
+  home: Staten Island, NY
+  identity: >
+    For the person who was never given a head start and never asked for one.
+  pillars: [validation, resilience, arrival]
+  positioning: [dark, premium, serious, distinct, controlled, aspirational]
+
+voice:
+  do:
+    - Short sentences. Say it once.
+    - Plain words. Statements, not questions, by default.
+    - Controlled intensity. Confident, never loud.
+    - Real facts over adjectives (weight, wash, stock that is actually true).
+    - Sound like a person, not a brand account.
+  dont:
+    - Hype-bro energy, gym-bro slang, internet slang.
+    - Fake urgency or invented scarcity.
+    - Emoji strings, exclamation strings, all-caps shouting.
+    - Corporate filler ("elevate", "unleash", "game-changer").
+
+content_pillars:
+  - id: story
+    name: Identity and story
+    note: Fall of Icarus myth, no head start, fly anyway.
+  - id: product
+    name: Product detail
+    note: 480 GSM weight, wash, fit, how it is made.
+  - id: proof
+    name: Proof and scarcity (true facts only)
+    note: Sold-out history, stock that is really low, real customers.
+  - id: founder
+    name: Founder
+    note: One person, full-time job, building at night, Staten Island.
+  - id: gym
+    name: Training culture
+    note: Discipline, the work nobody sees. Gym as setting, not slogan.
+
+# A caption containing any of these is BLOCKED (score 0). Matching ignores case.
+banned_phrases:
+  # hype and slang
+  - let's go
+  - lets go
+  - lfg
+  - drip
+  - fire 🔥
+  - "🔥🔥"
+  - insane
+  - crazy
+  - bussin
+  - no cap
+  - slay
+  - goat
+  - beast mode
+  - vibes
+  - sheesh
+  - built different
+  - grind season
+  - no days off
+  - rise and grind
+  - hustle harder
+  # fake urgency
+  - don't miss out
+  - dont miss out
+  - limited time only
+  - act now
+  - hurry
+  - before it's too late
+  - selling like crazy
+  - last chance
+  # corporate filler
+  - game changer
+  - game-changer
+  - elevate your
+  - unleash
+  - must-have
+  - next level
+  - level up
+  - take it to the next
+  # engagement bait
+  - tag a friend
+  - smash that
+  - double tap
+  - you won't believe
+
+rules:
+  max_exclamation_marks: 1
+  max_emojis: 1
+  max_hashtags: 3
+  # Words allowed in ALL CAPS. Any other all-caps word of 3+ letters is penalized.
+  caps_allowed: [ONEWRLD, GSM, XL, XXL, 2XL, NY, USA, DM]
+  # Soft length limits in characters (over = small penalty, not a block).
+  soft_max_chars: 220
+  ideal_max_chars: 120

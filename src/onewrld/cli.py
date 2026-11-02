@@ -18,6 +18,13 @@ Database and jobs:
   repair-schema --yes    one-time fix for bug M-004 (moves you off misplaced tables)
   diagnose               a paste-safe report (no secrets) for Claude when something fails
 
+Brand Brain (Phase 2):
+  quiz                   the voice quiz (this-or-that pairs); `voice` shows your profile
+  captions import        load caption files from brand/ and score them
+  captions review        approve / reject / edit captions waiting for you (10 at a time)
+  captions list          show captions with scores and status
+  captions score "text"  score any caption against the brand rules
+
 Demos (nothing real is ever posted):
   demo-action            simulate one outward action directly
   demo-job "text"        queue a fake post job (run `worker` to process it)
@@ -178,6 +185,68 @@ def _cmd_repair_schema(settings, yes: bool) -> int:
     return 0
 
 
+def _cmd_quiz(settings) -> int:
+    from onewrld import db, quiz
+
+    with db.connect(settings) as conn:
+        n = quiz.run(conn)
+        print(f"Saved {n} answer(s). Your voice profile:")
+        for line in quiz.profile(conn):
+            print("  " + line)
+    return 0
+
+
+def _cmd_voice(settings) -> int:
+    from onewrld import db, quiz
+
+    with db.connect(settings) as conn:
+        lines = quiz.profile(conn)
+    print("\n".join("  " + l for l in lines) if lines else "No quiz answers yet. Run `quiz`.")
+    return 0
+
+
+def _cmd_captions(settings, action: str, text: str | None, limit: int) -> int:
+    from onewrld import brand, captions, db
+
+    if action == "score":
+        if not text:
+            print('Usage: python -m onewrld captions score "your caption"')
+            return 1
+        s = brand.score_caption(text)
+        verdict = "BLOCKED" if s.blocked else ("passes" if s.passes else
+                                              f"below the quality floor ({brand.QUALITY_FLOOR})")
+        print(f"Score {s.score}: {verdict}")
+        for r in s.reasons:
+            print("  - " + r)
+        return 0
+    with db.connect(settings) as conn:
+        if action == "import":
+            files = sorted(brand.BRAND_DIR.glob("captions_*.yaml"))
+            for f in files:
+                st = captions.import_file(conn, f)
+                print(f"{f.name}: {st['new']} new ({st['to_review']} to review, "
+                      f"{st['blocked']} blocked, {st['below_floor']} below floor), "
+                      f"{st['already_had']} already imported")
+            return 0
+        if action == "review":
+            st = captions.review(conn, limit=limit)
+            print(f"\nDone: {st['approved']} approved, {st['rejected']} rejected, "
+                  f"{st['edited']} edited, {st['skipped']} skipped.")
+            return 0
+        if action == "list":
+            rows = conn.execute(
+                """SELECT c.id, c.score, c.blocked, coalesce(a.status, '-') AS status, c.text
+                   FROM caption c LEFT JOIN approval a
+                     ON a.item_type='caption' AND a.item_id=c.id::text
+                   ORDER BY c.id LIMIT %s""", (limit,)).fetchall()
+            for r in rows:
+                tag = "BLOCKED" if r["blocked"] else r["status"]
+                print(f"  #{r['id']:<4} {r['score']:>3}  {tag:<9} {r['text'][:80]}")
+            print("Totals:", captions.summary(conn))
+            return 0
+    return 1
+
+
 def _cmd_test() -> int:
     return subprocess.call([sys.executable, "-m", "pytest", "-q", "-rs"])
 
@@ -204,6 +273,12 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("test-email", help="send yourself a test email")
     sub.add_parser("phase1-check", help="Phase 1 acceptance test")
     sub.add_parser("diagnose", help="paste-safe problem report")
+    sub.add_parser("quiz", help="voice quiz")
+    sub.add_parser("voice", help="show your voice profile")
+    cp = sub.add_parser("captions", help="caption bank: import, review, list, score")
+    cp.add_argument("action", choices=["import", "review", "list", "score"])
+    cp.add_argument("text", nargs="?")
+    cp.add_argument("--limit", type=int, default=10)
     rs = sub.add_parser("repair-schema", help="one-time fix for bug M-004")
     rs.add_argument("--yes", action="store_true")
     sub.add_parser("demo-action", help="simulate a post to see the safety gates")
@@ -252,6 +327,13 @@ def main(argv: list[str] | None = None) -> int:
             return _cmd_send_alerts(settings)
         if args.command == "test-email":
             return _cmd_test_email(settings)
+        if args.command == "quiz":
+            return _cmd_quiz(settings)
+        if args.command == "voice":
+            return _cmd_voice(settings)
+        if args.command == "captions":
+            limit = args.limit if args.action != "list" or args.limit != 10 else 100
+            return _cmd_captions(settings, args.action, args.text, limit)
         if args.command == "diagnose":
             from onewrld import diagnose
 

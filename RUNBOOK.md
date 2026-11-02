@@ -139,3 +139,20 @@ This runs health, all tests, a kill-switch drill, a demo job and a test email. E
 python -m onewrld diagnose
 ```
 This prints a report and saves it to `diagnose.txt`. It never includes passwords or keys, so it's safe to paste to Claude in full.
+
+## 12. Brand Brain: voice quiz and captions
+First time only:
+```
+python -m onewrld migrate
+python -m onewrld captions import
+```
+Then:
+| Command | What it does |
+|---|---|
+| `python -m onewrld quiz` | 15 this-or-that pairs. Type `a`, `b`, `both` or `n` (neither). `q` stops; your answers so far are kept. |
+| `python -m onewrld voice` | Shows the voice profile your quiz answers produced. |
+| `python -m onewrld captions review` | Shows waiting captions one at a time: `a` approve, `r` reject (then type why), `e` edit (type your version), `s` skip, `q` quit. |
+| `python -m onewrld captions list` | Every caption with its score and status. |
+| `python -m onewrld captions score "text"` | Checks any caption you write against the brand rules. |
+
+The rules live in `brand/brand_bible.yaml`. To ban a phrase, add it to `banned_phrases` and save; it takes effect immediately.

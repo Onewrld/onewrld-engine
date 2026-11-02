@@ -22,6 +22,11 @@ Content, distribution, attribution and paid-ads system for ONEWRLD.
 | `src/onewrld/alerts.py` | Records problems you need to know about. |
 | `src/onewrld/notify.py` | Emails you alert digests, within hourly/daily caps. |
 | `src/onewrld/acceptance.py` | The `phase1-check` drills. |
+| `brand/` | Brand bible (voice rules, banned phrases), voice quiz, caption files. |
+| `src/onewrld/brand.py` | Scores a caption against the brand bible. |
+| `src/onewrld/captions.py` | Imports captions; review with approve/reject/edit and reasons. |
+| `src/onewrld/quiz.py` | The voice quiz and your voice profile. |
+| `assets/brand/` | Logo files. |
 | `src/onewrld/handlers/` | The code for each kind of job (demo jobs for now). |
 | `src/onewrld/cli.py` | The commands you type. |
 | `tests/` | Automated tests. Run them with `python -m onewrld test`. |

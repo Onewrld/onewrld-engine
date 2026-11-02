@@ -1,0 +1,65 @@
+# Voice quiz: pick the option that sounds more like ONEWRLD.
+# Each pair tests ONE thing (the "dimension"). Your picks tell the system where
+# your voice sits on each dimension. Answering "both" or "neither" is allowed.
+
+pairs:
+  - id: q01
+    dimension: product_vs_story
+    a: {text: "480 GSM cotton. You feel the weight the second you pick it up.", value: product}
+    b: {text: "Icarus fell because he tried. Most people never leave the ground.", value: story}
+  - id: q02
+    dimension: length
+    a: {text: "Fly anyway.", value: short}
+    b: {text: "Everyone remembers that Icarus fell. Nobody talks about the fact that he flew.", value: long}
+  - id: q03
+    dimension: i_vs_we
+    a: {text: "I started this with no connections and no plan B.", value: i}
+    b: {text: "We started this with no connections and no plan B.", value: we}
+  - id: q04
+    dimension: cta
+    a: {text: "Fall of Icarus. Last few hoodies. Link in bio.", value: explicit}
+    b: {text: "Fall of Icarus. Last few hoodies.", value: none}
+  - id: q05
+    dimension: hook_type
+    a: {text: "What would you do if nobody gave you a head start?", value: question}
+    b: {text: "Nobody gave us a head start. We stopped waiting for one.", value: statement}
+  - id: q06
+    dimension: myth_reference
+    a: {text: "Some people watch the sun. Some fly at it.", value: mythic}
+    b: {text: "Some people talk about it. Some people do it.", value: plain}
+  - id: q07
+    dimension: emoji
+    a: {text: "Fall of Icarus is back on the site. 🕊️", value: one_emoji}
+    b: {text: "Fall of Icarus is back on the site.", value: no_emoji}
+  - id: q08
+    dimension: hashtags
+    a: {text: "Heavy cotton. Built to last. #onewrld #fallofIcarus", value: hashtags}
+    b: {text: "Heavy cotton. Built to last.", value: no_hashtags}
+  - id: q09
+    dimension: scarcity
+    a: {text: "Medium is down to one in both pieces.", value: factual_scarcity}
+    b: {text: "The full set. Hoodie and sweats.", value: no_scarcity}
+  - id: q10
+    dimension: place
+    a: {text: "Made in Staten Island. Worn everywhere.", value: staten_island}
+    b: {text: "Made by one person. Worn everywhere.", value: no_place}
+  - id: q11
+    dimension: gym_reference
+    a: {text: "Discipline looks boring from the outside.", value: gym_implied}
+    b: {text: "6am. Empty gym. Nobody watching. That's where it's built.", value: gym_explicit}
+  - id: q12
+    dimension: founder_vs_brand
+    a: {text: "I work a full-time job and build this at night. That's the brand.", value: founder}
+    b: {text: "ONEWRLD is for the ones who build at night.", value: brand}
+  - id: q13
+    dimension: casing
+    a: {text: "fly anyway.", value: lowercase}
+    b: {text: "Fly anyway.", value: sentence_case}
+  - id: q14
+    dimension: edge
+    a: {text: "Not for everyone. That's the point.", value: exclusive}
+    b: {text: "For anyone who's ever had to start from nothing.", value: inclusive}
+  - id: q15
+    dimension: sold_out_proof
+    a: {text: "Everything before this sold out. Fall of Icarus is the last one standing.", value: proof}
+    b: {text: "Fall of Icarus is still available on the site.", value: plain_availability}

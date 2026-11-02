@@ -131,3 +131,15 @@ Every decision is written as Decision / Why / What if. Newest at the bottom.
 - **Decision:** Heavy volume = the same strong video posted once on each of IG, TikTok, YouTube Shorts and FB (plus a text version on X), at 1 to 3 different videos per day. That's 5 to 15 posts a day across platforms.
 - **Why:** Posting the same video on different platforms is normal and safe. Reposting near-copies on the SAME platform triggers originality penalties (Instagram April 2026 rule; TikTok and YouTube similar).
 - **What if:** If reach per post holds, raise to 3 to 5 videos a day; if it drops, pull back.
+
+## D-032: The brand scorer is rule-based, with a quality floor of 70
+- **Decision:** Banned phrases block a caption outright (score 0). Soft rules (exclamation marks, emojis, hashtags, all-caps, length, question hooks) subtract points. A caption must score 70 or more to reach your review queue.
+- **Why:** Free, instant, predictable, and you can read exactly why a caption scored what it did. Rules catch what's *wrong*. Taste (corny vs. good) is your call during review, and your reasons get stored.
+- **What if:** Rules can't judge taste: "Burned once. Built twice." scores 100 but may be corny. Once there are enough of your approve/reject reasons, we add a taste check learned from them (Phase 6), optionally AI-assisted when the API key is on.
+
+## D-033: Caption decisions use the shared `approval` table
+- **Why:** One approvals inbox for captions now, and posts and ad changes later, so the future dashboard has one place to show "waiting for you."
+- **Edits:** Your edit saves the original as rejected (with your reason) and your version as approved, linked together. That before/after pair is the strongest learning signal there is.
+
+## D-034: The seed caption bank includes deliberately bad captions
+- **Why:** It proves the scorer blocks them ("No days off. Built different. 🔥🔥", "Last chance… !!"), and two borderline ones test where your line is. They're labeled in the YAML file.
