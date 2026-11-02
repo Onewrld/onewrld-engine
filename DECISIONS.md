@@ -147,3 +147,10 @@ Every decision is written as Decision / Why / What if. Newest at the bottom.
 ## D-035: Brand files use TOML, not YAML
 - **Why:** TOML is read by Python's built-in `tomllib`, so there's nothing to install and no build failures on Windows (M-006). It's just as readable: text in quotes, lists in brackets, `#` for notes.
 - **What if:** If a file has a typo, the error names the line. Run `python -m onewrld captions score "test"` after editing the brand bible to check it still loads.
+
+## D-036: Each collection's meaning is stored in the brand bible, in the owner's words
+- **Why:** Batch 1 failed because I guessed what Fall of Icarus means (6/6 story captions rejected). The meaning is now a field (`[collections.fall_of_icarus]`) that every future caption writer, human or AI, must follow, with a list of angles to avoid.
+- **What if:** For the December drop, we capture its meaning BEFORE writing a single caption.
+
+## D-037: Caption review shows the newest batch first
+- **Why:** So the owner always reviews the latest, best-informed captions first. Older pending ones still come after.

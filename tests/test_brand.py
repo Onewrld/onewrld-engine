@@ -76,8 +76,8 @@ def test_review_records_approve_reject_and_reason(conn):
     a, _ = captions.add_caption(conn, "Fly anyway.")
     b, _ = captions.add_caption(conn, "Some people watch the sun. Some fly at it.")
     out = []
-    # pending is ordered by score then id; both score 100 -> a first, then b
-    st = captions.review(conn, ask=_answers("a", "r", "too poetic"), show=out.append)
+    # pending is ordered by score, then newest first; both score 100 -> b first, then a
+    st = captions.review(conn, ask=_answers("r", "too poetic", "a"), show=out.append)
     assert st["approved"] == 1 and st["rejected"] == 1
     rows = {r["item_id"]: r for r in conn.execute(
         "SELECT item_id, status, decision_note FROM approval WHERE item_type='caption'")}
@@ -135,3 +135,15 @@ def test_feedback_report_shows_decisions_and_reasons(conn):
     assert "== approved (1) ==" in rep and "Fly anyway." in rep
     assert "Burned once. Built twice.   <- corny" in rep
     assert "product vs story: story" in rep
+
+
+def test_batch2_fits_the_rules_and_avoids_rejected_angle():
+    import tomllib
+    data = tomllib.loads((brand.BRAND_DIR / "captions_fall_of_icarus_batch2.toml").read_text(encoding="utf-8"))
+    bible = brand.load_bible()
+    assert "Pride comes before the fall" in bible["collections"]["fall_of_icarus"]["meaning"]
+    for c in data["captions"]:
+        s = brand.score_caption(c["text"])
+        assert s.passes and s.score >= 90, (c["text"], s.reasons)
+        low = c["text"].lower()
+        assert "fly anyway" not in low and "flew anyway" not in low  # L-001

@@ -79,7 +79,7 @@ def pending(conn: psycopg.Connection, limit: int = 10) -> list[dict]:
         """SELECT c.id, c.text, c.pillar, c.score, c.score_reasons, c.fact_check
            FROM approval a JOIN caption c ON c.id = a.item_id::bigint
            WHERE a.item_type = 'caption' AND a.status = 'pending'
-           ORDER BY c.score DESC, c.id LIMIT %s""", (limit,)).fetchall()
+           ORDER BY c.score DESC, c.id DESC LIMIT %s""", (limit,)).fetchall()
 
 
 def decide(conn: psycopg.Connection, caption_id: int, status: str, note: str = "") -> None:
@@ -111,7 +111,7 @@ def record_edit(conn: psycopg.Connection, caption_id: int, new_text: str, note: 
 
 def review(conn: psycopg.Connection, limit: int = 10,
            ask: Callable[[str], str] = input, show: Callable[[str], None] = print) -> dict:
-    """Walk through pending captions one at a time. a=approve r=reject e=edit s=skip q=quit."""
+    """Walk through pending captions one at a time, newest batch first. a=approve r=reject e=edit s=skip q=quit."""
     stats = {"approved": 0, "rejected": 0, "edited": 0, "skipped": 0}
     items = pending(conn, limit)
     if not items:

@@ -1,0 +1,95 @@
+# Caption bank: Fall of Icarus, batch 2. Written 2026-11-02 after the owner's review.
+# Meaning (owner, option A): pride comes before the fall. Discipline, ego in check.
+# Style from the voice quiz + approvals: plain statements, product facts, slightly
+# exclusive, no emoji, no call to action, no scarcity talk (sold-out proof is fine).
+
+product = "onewrld-fall-of-icarus-zip-hoodie"
+
+# meaning: pride before the fall, said plainly
+[[captions]]
+pillar = "story"
+text = "Most people don't fall from failing. They fall from thinking they made it."
+
+[[captions]]
+pillar = "story"
+text = "Ego is the fastest way down."
+
+[[captions]]
+pillar = "story"
+text = "He was warned. He went higher anyway."
+
+[[captions]]
+pillar = "story"
+text = "Pride gets loud right before the fall."
+
+[[captions]]
+pillar = "story"
+text = "Fall of Icarus. A reminder, not a celebration."
+
+[[captions]]
+pillar = "story"
+text = "The climb doesn't end when people start clapping."
+
+[[captions]]
+pillar = "story"
+text = "Whatever got you here, keep doing it. The day you stop is the day it starts slipping."
+
+[[captions]]
+pillar = "story"
+text = "Confidence is earned every day. Arrogance thinks it's already paid in full."
+
+[[captions]]
+pillar = "story"
+text = "Quiet when it's going well. Same when it isn't."
+
+[[captions]]
+pillar = "story"
+text = "Built slow on purpose."
+
+# product (the quiz leaned product over story)
+[[captions]]
+pillar = "product"
+text = "480 GSM. Embroidered chest. Fall of Icarus printed across the back."
+
+[[captions]]
+pillar = "product"
+text = "The back carries the fall. The chest carries the name."
+
+[[captions]]
+pillar = "product"
+text = "The stitching is unconventional on purpose. Look closer."
+
+[[captions]]
+pillar = "product"
+text = "Restraint and boldness. That's the whole hoodie."
+
+[[captions]]
+pillar = "product"
+text = "Made heavy so it lasts. Made quiet so it doesn't have to explain itself."
+
+[[captions]]
+pillar = "product"
+text = "Heavy cotton sweats. Darker in the folds, lighter where they catch the light."
+
+[[captions]]
+pillar = "product"
+text = "Wide from the knee down. Stacks over your sneakers without looking sloppy."
+
+# proof (sold-out history is fine; no scarcity pressure)
+[[captions]]
+pillar = "proof"
+fact_check = true
+text = "Every tee and collab we've made sold out. Fall of Icarus is what's left."
+
+# exclusive edge (approved style: "Not for everyone. That's the point.")
+[[captions]]
+pillar = "story"
+text = "Not made for the loud ones."
+
+[[captions]]
+pillar = "story"
+text = "If it needs explaining, it isn't for you."
+
+[[captions]]
+pillar = "gym"
+text = "For people who don't post the work."

@@ -104,3 +104,13 @@ note = "One person, full-time job, building at night, Staten Island."
 id = "gym"
 name = "Training culture"
 note = "Discipline, the work nobody sees. Gym as setting, not slogan."
+
+# What each collection MEANS, in the owner's words. Story captions must fit this.
+[collections.fall_of_icarus]
+meaning = "Pride comes before the fall. Icarus got arrogant, ignored the warning, flew too high and fell. The collection is about staying disciplined and keeping your ego in check while you climb."
+confirmed_by_owner = "2026-11-02"
+avoid = [
+  "Celebrating the fall or the attempt (\"fly anyway\", \"at least he flew\")",
+  "Treating the sun as a goal to chase",
+  "Heavy myth language: the owner prefers plain words",
+]
