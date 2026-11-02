@@ -147,3 +147,13 @@ def test_batch2_fits_the_rules_and_avoids_rejected_angle():
         assert s.passes and s.score >= 90, (c["text"], s.reasons)
         low = c["text"].lower()
         assert "fly anyway" not in low and "flew anyway" not in low  # L-001
+
+
+@pytest.mark.parametrize("text", ["If it needs explaining, it isn't for you.",
+                                  "Not made for the loud ones."])
+def test_rude_exclusivity_is_blocked(text):  # L-005
+    assert brand.score_caption(text).blocked
+
+
+def test_approved_exclusivity_still_passes():
+    assert brand.score_caption("Not for everyone. That's the point.").passes

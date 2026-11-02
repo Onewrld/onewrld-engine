@@ -6,6 +6,11 @@
 # A caption containing any of these is BLOCKED (score 0). Matching ignores case and
 # only matches whole words. To ban a phrase, add a line (lowercase, in quotes, comma).
 banned_phrases = [
+  # talking down to people (L-005: "its rude")
+  "isn't for you",
+  "isnt for you",
+  "not for you",
+  "not made for the",
   "let's go",
   "lets go",
   "lfg",
@@ -64,6 +69,9 @@ do = [
   "Sound like a person, not a brand account.",
 ]
 dont = [
+  "Talk down to people who are not the audience (L-005).",
+  "Brag, including sold-out flexes (L-006).",
+  "Abstract or poetic product lines; keep product copy physical (L-007).",
   "Hype-bro energy, gym-bro slang, internet slang.",
   "Fake urgency or invented scarcity.",
   "Emoji strings, exclamation strings, all-caps shouting.",

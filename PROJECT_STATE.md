@@ -7,14 +7,14 @@ _Last updated: 2026-11-02_
 |---|---|
 | Phase | 2: Brand Brain |
 | Done | Phase 0 plan. Module 1.1 (skeleton and safety). Module 1.2 (database, job queue, worker, alerts, database kill switch). Module 1.3 (email alerts with caps, log rotation, `phase1-check`; 43 tests pass) |
-| Current | Owner reviews caption batch 2 (21 captions, meaning A: pride before the fall) |
+| Current | Phase 2 done. Next: Phase 3 Video Studio (built and tested on a sample clip; owner's footage plugs in after the shoot) |
 | Next | Shoot day (Fall of Icarus shot list), then Phase 3: Video Studio |
 | Blockers | None |
 
 ## Phase checklist
 - [x] Phase 0: Plan and feasibility
 - [x] Phase 1: Foundation (owner's PC reported good on 2026-11-02, after fixes M-004 and M-005). [x] 1.1 skeleton and safety · [x] 1.2 database and job queue · [x] 1.3 email alerts and acceptance (owner to run `phase1-check`)
-- [ ] Phase 2: Brand Brain. [x] 2.1 bible, scorer, quiz, caption bank (30), review with feedback · [x] owner test: 10 reviewed (4 approved, 6 rejected) · [x] 2.2 batch 2 written from the owner's reasons · [ ] owner reviews batch 2
+- [ ] Phase 2: Brand Brain. [x] 2.1 bible, scorer, quiz, caption bank (30), review with feedback · [x] owner test: 10 reviewed (4 approved, 6 rejected) · [x] 2.2 batch 2 written from the owner's reasons · [x] owner reviewed 10 of batch 2 (5/10) · 11 left to review whenever
 - [ ] Phase 3: Video Studio (plus 3.5 manual posting kit)
 - [ ] Phase 4: Attribution
 - [ ] Phase 4B: Volume Engine
