@@ -24,6 +24,7 @@ Brand Brain (Phase 2):
   captions review        approve / reject / edit captions waiting for you (10 at a time)
   captions list          show captions with scores and status
   captions score "text"  score any caption against the brand rules
+  captions feedback      your decisions + reasons + quiz profile (paste to Claude)
 
 Demos (nothing real is ever posted):
   demo-action            simulate one outward action directly
@@ -233,6 +234,9 @@ def _cmd_captions(settings, action: str, text: str | None, limit: int) -> int:
             print(f"\nDone: {st['approved']} approved, {st['rejected']} rejected, "
                   f"{st['edited']} edited, {st['skipped']} skipped.")
             return 0
+        if action == "feedback":
+            print(captions.feedback_report(conn))
+            return 0
         if action == "list":
             rows = conn.execute(
                 """SELECT c.id, c.score, c.blocked, coalesce(a.status, '-') AS status, c.text
@@ -276,7 +280,7 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("quiz", help="voice quiz")
     sub.add_parser("voice", help="show your voice profile")
     cp = sub.add_parser("captions", help="caption bank: import, review, list, score")
-    cp.add_argument("action", choices=["import", "review", "list", "score"])
+    cp.add_argument("action", choices=["import", "review", "list", "score", "feedback"])
     cp.add_argument("text", nargs="?")
     cp.add_argument("--limit", type=int, default=10)
     rs = sub.add_parser("repair-schema", help="one-time fix for bug M-004")

@@ -157,3 +157,24 @@ def summary(conn: psycopg.Connection) -> dict:
            FROM caption c LEFT JOIN approval a
              ON a.item_type='caption' AND a.item_id = c.id::text""").fetchone()
     return dict(row)
+
+
+def feedback_report(conn: psycopg.Connection) -> str:
+    """Everything you decided, with your reasons, plus your quiz profile. Paste-safe:
+    it contains only caption text and your notes, nothing secret."""
+    from onewrld import quiz
+
+    out = ["ONEWRLD VOICE FEEDBACK", "", "== voice quiz =="]
+    prof = quiz.profile(conn)
+    out += [f"  {l}" for l in prof] if prof else ["  (quiz not taken)"]
+    for status in ("approved", "rejected"):
+        rows = conn.execute(
+            """SELECT c.text, c.pillar, a.decision_note FROM approval a
+               JOIN caption c ON c.id = a.item_id::bigint
+               WHERE a.item_type='caption' AND a.status=%s ORDER BY a.decided_at""",
+            (status,)).fetchall()
+        out += ["", f"== {status} ({len(rows)}) =="]
+        for r in rows:
+            note = f"   <- {r['decision_note']}" if r["decision_note"] else ""
+            out.append(f"  [{r['pillar']}] {r['text']}{note}")
+    return "\n".join(out)

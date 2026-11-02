@@ -153,6 +153,7 @@ Then:
 | `python -m onewrld voice` | Shows the voice profile your quiz answers produced. |
 | `python -m onewrld captions review` | Shows waiting captions one at a time: `a` approve, `r` reject (then type why), `e` edit (type your version), `s` skip, `q` quit. |
 | `python -m onewrld captions list` | Every caption with its score and status. |
+| `python -m onewrld captions feedback` | Your decisions, reasons and quiz profile in one paste-safe report. |
 | `python -m onewrld captions score "text"` | Checks any caption you write against the brand rules. |
 
 The rules live in `brand/brand_bible.toml`. To ban a phrase, add it to `banned_phrases` and save; it takes effect immediately.

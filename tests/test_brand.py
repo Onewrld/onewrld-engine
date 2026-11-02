@@ -123,3 +123,15 @@ def test_quiz_rerun_replaces_answer(conn):
     quiz.save_answer(conn, pair, "b")
     rows = conn.execute("SELECT choice FROM quiz_answer").fetchall()
     assert [r["choice"] for r in rows] == ["b"]
+
+
+def test_feedback_report_shows_decisions_and_reasons(conn):
+    a, _ = captions.add_caption(conn, "Fly anyway.", pillar="story")
+    b, _ = captions.add_caption(conn, "Burned once. Built twice.", pillar="story")
+    captions.decide(conn, a, "approved")
+    captions.decide(conn, b, "rejected", "corny")
+    quiz.save_answer(conn, quiz.load_pairs()[0], "b")
+    rep = captions.feedback_report(conn)
+    assert "== approved (1) ==" in rep and "Fly anyway." in rep
+    assert "Burned once. Built twice.   <- corny" in rep
+    assert "product vs story: story" in rep
