@@ -9,7 +9,7 @@ _Last updated: 2026-11-02_
 | Done | Phase 0 plan. Module 1.1 (skeleton and safety). Module 1.2 (database, job queue, worker, alerts, database kill switch). Module 1.3 (email alerts with caps, log rotation, `phase1-check`; 43 tests pass) |
 | Current | Collecting Phase 2 inputs from the owner |
 | Next | Phase 2: Brand Brain (brand bible, hook library, caption generator, scoring, feedback) |
-| Blockers | Brand material from the owner (captions liked and disliked, colors, fonts, next drops). No API key needed yet (D-029) |
+| Blockers | None hard. Owner has no example captions → Phase 2 starts with a this-or-that voice calibration instead |
 
 ## Phase checklist
 - [x] Phase 0: Plan and feasibility
@@ -31,7 +31,9 @@ _Last updated: 2026-11-02_
 - Meta app and tokens, posting-layer API key, X API keys: Phase 5
 
 ## Open questions for owner
-- Platform handles (brand and personal) for IG, FB, TikTok, X and YouTube
+- Personal/founder handles (brand handles found: IG @onewrld.us, TikTok @onewrld.US, X @onewrldus, YT @onewrldus)
+- Is the font in the logo/graphics the same as the website font (Assistant)?
+- Next drop (about mid-Dec): name and what it means
 - Is Instagram a Business or a Creator account?
 - Own-drop price, cost per shirt, release cadence; next 2 to 3 drops
 - Do gym collabs have a revenue split?

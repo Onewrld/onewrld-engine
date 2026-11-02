@@ -7,7 +7,9 @@ Full plan: `docs/PHASE0_PLAN.md`. Current state: `PROJECT_STATE.md`.
 ## Business facts (keep current)
 - Brand: ONEWRLD (all caps), Onewrld LLC, Staten Island NY.
 - About 75% of drops are ONEWRLD-only collections (for example *Fall of Icarus*). Gym collabs (Intox, Rare Breed) are a small leverage play for reach and events.
-- Platforms in use: Instagram, Facebook (linked), TikTok, X, YouTube.
+- Platforms in use: Instagram @onewrld.us, TikTok @onewrld.US, X @onewrldus, YouTube @onewrldus, Facebook (linked to IG).
+- Store: onewrld.us (Shopify Basic, Dawn theme). Website font: Assistant (regular). Colors: black/white (#121212, #000000, #FFFFFF).
+- Next drop: about mid-December 2026 (name/theme TBD).
 - Stack: Shopify, Enlistly (10% affiliate), Supabase (this project has its own, separate from the partner portal), Netlify.
 - Owner: Adam. Windows PC. Full-time job. Beginner coder. Gets overwhelmed quickly. Budget about $1,000.
 
