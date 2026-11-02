@@ -26,6 +26,12 @@ Brand Brain (Phase 2):
   captions score "text"  score any caption against the brand rules
   captions feedback      your decisions + reasons + quiz profile (paste to Claude)
 
+Video Studio (Phase 3):
+  render-test            make a sample clip and render it + 3 variants (see the quality now)
+  render FILE            render your clip: main version + variants, quality-checked
+                         options: --variants 3  --caption "text"  --seconds 30
+  renders                list recent renders with quality-check results
+
 Demos (nothing real is ever posted):
   demo-action            simulate one outward action directly
   demo-job "text"        queue a fake post job (run `worker` to process it)
@@ -34,6 +40,7 @@ Demos (nothing real is ever posted):
 from __future__ import annotations
 
 import argparse
+from pathlib import Path
 import subprocess
 import sys
 import uuid
@@ -251,6 +258,60 @@ def _cmd_captions(settings, action: str, text: str | None, limit: int) -> int:
     return 1
 
 
+def _print_renders(rows) -> None:
+    for r in rows:
+        sp = r["spec"]
+        tag = "PASS" if r["qc_passed"] else "FAIL"
+        bits = [sp["look"]] + ([f"zoom {sp['zoom']}"] if sp["zoom"] > 1 else []) + \
+               ([f"crop {sp['crop_x']}"] if sp["crop_x"] != 0.5 else [])
+        print(f"  [{tag}] {Path(r['output_path']).name}  ({', '.join(bits)})")
+        if sp.get("caption"):
+            print(f"         caption: {sp['caption'][:70]}")
+        if not r["qc_passed"] and r["qc"]:
+            bad = [k for k, ok in r["qc"]["checks"].items() if not ok]
+            print(f"         failed: {', '.join(bad)}")
+
+
+def _cmd_render(settings, file: str | None, variants: int, caption: str | None,
+                seconds: float) -> int:
+    from onewrld import db, studio, videos
+    from onewrld.worker import run_worker
+
+    studio.require_ffmpeg()
+    if file is None:  # render-test
+        src = studio.make_test_clip(settings.root / "media" / "test_clip.mp4")
+        print(f"Made a sample clip: {src}")
+    else:
+        src = Path(file)
+    with db.connect(settings) as conn:
+        asset = videos.register_asset(conn, src)
+        job_ids = videos.plan(conn, asset, variants, caption, seconds)
+    print(f"Rendering {len(job_ids)} version(s). This can take a few minutes...")
+    run_worker(settings, max_jobs=len(job_ids), max_seconds=3600, only_ids=job_ids)
+    with db.connect(settings) as conn:
+        rows = conn.execute(
+            """SELECT r.* FROM render r JOIN job j ON j.idempotency_key = 'render:' || r.render_key
+               WHERE j.id = ANY(%s) ORDER BY r.id""", (job_ids,)).fetchall()
+        dead = conn.execute("SELECT id, last_error FROM job WHERE id = ANY(%s) AND status='dead'",
+                            (job_ids,)).fetchall()
+    _print_renders(rows)
+    for d in dead:
+        print(f"  job #{d['id']} failed: {d['last_error'][:200]}")
+    print(f"\nVideos are in: {videos.renders_dir(settings)}")
+    return 0 if rows and all(r["qc_passed"] for r in rows) and not dead else 1
+
+
+def _cmd_renders(settings) -> int:
+    from onewrld import db, videos
+
+    with db.connect(settings) as conn:
+        rows = videos.recent(conn)
+    if not rows:
+        print("No renders yet. Try: python -m onewrld render-test")
+    _print_renders(rows)
+    return 0
+
+
 def _cmd_test() -> int:
     return subprocess.call([sys.executable, "-m", "pytest", "-q", "-rs"])
 
@@ -277,6 +338,13 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("test-email", help="send yourself a test email")
     sub.add_parser("phase1-check", help="Phase 1 acceptance test")
     sub.add_parser("diagnose", help="paste-safe problem report")
+    sub.add_parser("render-test", help="render a sample clip + 3 variants")
+    rn = sub.add_parser("render", help="render a clip + variants")
+    rn.add_argument("file")
+    rn.add_argument("--variants", type=int, default=3)
+    rn.add_argument("--caption")
+    rn.add_argument("--seconds", type=float, default=30.0)
+    sub.add_parser("renders", help="list recent renders")
     sub.add_parser("quiz", help="voice quiz")
     sub.add_parser("voice", help="show your voice profile")
     cp = sub.add_parser("captions", help="caption bank: import, review, list, score")
@@ -331,6 +399,13 @@ def main(argv: list[str] | None = None) -> int:
             return _cmd_send_alerts(settings)
         if args.command == "test-email":
             return _cmd_test_email(settings)
+        if args.command == "render-test":
+            return _cmd_render(settings, None, 3, None, 30.0)
+        if args.command == "render":
+            return _cmd_render(settings, args.file, max(0, min(args.variants, 5)),
+                               args.caption, args.seconds)
+        if args.command == "renders":
+            return _cmd_renders(settings)
         if args.command == "quiz":
             return _cmd_quiz(settings)
         if args.command == "voice":

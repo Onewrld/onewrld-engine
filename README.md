@@ -27,6 +27,10 @@ Content, distribution, attribution and paid-ads system for ONEWRLD.
 | `src/onewrld/captions.py` | Imports captions; review with approve/reject/edit and reasons. |
 | `src/onewrld/quiz.py` | The voice quiz and your voice profile. |
 | `assets/brand/` | Logo files. |
+| `assets/fonts/` | Assistant font (open license). |
+| `src/onewrld/overlays.py` | Draws caption text, logo watermark and end card; defines the safe zone. |
+| `src/onewrld/studio.py` | Renders a clip to a finished 9:16 video; variants; quality gate. |
+| `src/onewrld/videos.py` | Connects the studio to the database and job queue; uses your approved captions. |
 | `src/onewrld/handlers/` | The code for each kind of job (demo jobs for now). |
 | `src/onewrld/cli.py` | The commands you type. |
 | `tests/` | Automated tests. Run them with `python -m onewrld test`. |

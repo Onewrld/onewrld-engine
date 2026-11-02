@@ -20,7 +20,8 @@ from onewrld.logging_setup import get_logger
 log = get_logger(__name__)
 
 
-def run_worker(settings: Settings, max_jobs: int = 25, max_seconds: int = 300) -> Counter:
+def run_worker(settings: Settings, max_jobs: int = 25, max_seconds: int = 300,
+               only_ids: list[int] | None = None) -> Counter:
     worker_id = f"{socket.gethostname()}:{os.getpid()}"
     deadline = time.monotonic() + max_seconds
     stats: Counter = Counter()
@@ -33,7 +34,7 @@ def run_worker(settings: Settings, max_jobs: int = 25, max_seconds: int = 300) -
                 stats["stopped_by_kill_switch"] += 1
                 break
             with conn.transaction():
-                job = jobs.claim(conn, worker_id)
+                job = jobs.claim(conn, worker_id, only_ids)
             if job is None:
                 break  # queue empty
             stats[jobs.run_one(settings, conn, job)] += 1

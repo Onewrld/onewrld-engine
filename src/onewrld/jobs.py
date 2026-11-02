@@ -80,19 +80,23 @@ def backoff_seconds(attempt: int) -> int:
     return int(base * random.uniform(0.8, 1.2))
 
 
-def claim(conn: psycopg.Connection, worker_id: str) -> dict | None:
-    """Take the next runnable job, or None if there isn't one."""
+def claim(conn: psycopg.Connection, worker_id: str,
+          only_ids: list[int] | None = None) -> dict | None:
+    """Take the next runnable job, or None if there isn't one.
+    only_ids limits the worker to specific jobs (e.g. the renders you just asked for),
+    so unrelated jobs waiting in the queue can't use up its budget (M-008)."""
     return conn.execute(
         """UPDATE job SET status = 'running', locked_at = now(), locked_by = %s,
                           attempts = attempts + 1, updated_at = now()
            WHERE id = (
                SELECT id FROM job
                WHERE status = 'queued' AND run_after <= now()
+                 AND (%s::bigint[] IS NULL OR id = ANY(%s::bigint[]))
                ORDER BY run_after, id
                FOR UPDATE SKIP LOCKED
                LIMIT 1)
            RETURNING *""",
-        (worker_id,),
+        (worker_id, only_ids, only_ids),
     ).fetchone()
 
 

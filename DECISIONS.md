@@ -154,3 +154,21 @@ Every decision is written as Decision / Why / What if. Newest at the bottom.
 
 ## D-037: Caption review shows the newest batch first
 - **Why:** So the owner always reviews the latest, best-informed captions first. Older pending ones still come after.
+
+## D-038: Phase 3 is split: 3.1 (format, brand, quality gate, variants) then 3.2 (spoken word-by-word captions and dead-air cuts)
+- **Why:** 3.2 needs a speech-recognition model (faster-whisper: a free model that runs on your PC). It's big and needs its own install check on Windows. 3.1 is useful on its own today for product and b-roll clips, which mostly have no talking.
+- **What if:** If the speech model is too slow on the PC, 3.2 falls back to a paid transcription service (pennies per minute), with approval first.
+
+## D-039: On-screen text and the logo are drawn with Pillow, not ffmpeg's text tool
+- **Why:** ffmpeg's text tool needs font file paths written in a special escaped format that breaks on Windows. Pillow (an image library with ready-made Windows installs) draws a transparent image and ffmpeg lays it on top. Same result, no Windows path problems.
+- **Font:** Assistant (your website font), open license, included in `assets/fonts`. The gothic logo font is used only as the logo image.
+
+## D-040: Safe zone and loudness standards
+- **Safe zone:** text and logo stay inside x 60 to 930, y 250 to 1420 of the 1080x1920 frame, away from the app buttons on the right and the caption and music bar at the bottom. The quality gate checks the caption's position.
+- **Loudness:** -14 LUFS (the common streaming loudness standard), peaks capped at -1.5 dB. Every clip plays at the same volume as the content around it.
+- **What if:** If a platform changes its interface, edit `SAFE` in `overlays.py`; the tests check that every caption fits inside.
+
+## D-041: Variants change several things at once
+- **Decision:** Each variant changes 2 to 4 of: look (natural or black-and-white), crop position, slow zoom, length, caption.
+- **Why:** Platforms fingerprint footage. A variant must be meaningfully different, not a recolor. Black-and-white is on-brand (your palette). These variants are for TESTING which treatment works (D-008); the strongest gets posted per platform.
+- **What if:** Once the learning loop (Phase 6) has data, it picks the treatments that perform best.

@@ -1,0 +1,255 @@
+"""Video Studio: turns a raw clip into a finished 9:16 post.
+
+One render = one call to ffmpeg (the standard command-line video tool) that:
+  1. reframes the clip to 1080x1920 (crop to fill, optional slow zoom)
+  2. applies a look (natural or black-and-white)
+  3. lays the logo watermark and the caption image on top
+  4. evens out the volume (loudness normalization to -14 LUFS, the level the
+     big platforms play at; LUFS = a standard unit of perceived loudness)
+  5. adds the 1.5-second end card
+Then quality_check() inspects the file before it may be used.
+
+A "variant" is the same clip rendered with different settings (look, crop, zoom,
+length, caption), so one source gives several distinct posts.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import json
+import re
+import shutil
+import subprocess
+from dataclasses import asdict, dataclass, replace
+from pathlib import Path
+
+from onewrld import overlays
+from onewrld.errors import PermanentError
+from onewrld.logging_setup import get_logger
+
+log = get_logger(__name__)
+
+FPS = 30
+END_CARD_SECONDS = 1.5
+TARGET_LUFS = -14.0
+MIN_SECONDS, MAX_SECONDS = 3.0, 90.0
+
+
+@dataclass(frozen=True)
+class RenderSpec:
+    """Everything that defines one output. Same spec + same source = same file."""
+    caption: str = ""
+    look: str = "natural"        # natural | bw
+    crop_x: float = 0.5          # 0 = left edge of the frame, 0.5 = center, 1 = right
+    zoom: float = 1.0            # 1.0 = none; 1.08 = slow push-in to 108%
+    max_seconds: float = 30.0
+    start: float = 0.0
+    end_card: bool = True
+    watermark: bool = True
+
+    def key(self, source_sha: str) -> str:
+        blob = json.dumps({"src": source_sha, **asdict(self)}, sort_keys=True)
+        return hashlib.sha256(blob.encode()).hexdigest()[:16]
+
+
+def require_ffmpeg() -> None:
+    if not (shutil.which("ffmpeg") and shutil.which("ffprobe")):
+        raise PermanentError("ffmpeg is not installed. On Windows run: winget install Gyan.FFmpeg "
+                             "then close and reopen PowerShell (RUNBOOK section 0).")
+
+
+def file_sha(path: Path) -> str:
+    h = hashlib.sha256()
+    with open(path, "rb") as f:
+        for chunk in iter(lambda: f.read(1 << 20), b""):
+            h.update(chunk)
+    return h.hexdigest()
+
+
+def probe(path: Path) -> dict:
+    require_ffmpeg()
+    out = subprocess.run(
+        ["ffprobe", "-v", "error", "-print_format", "json", "-show_format", "-show_streams",
+         str(path)], capture_output=True, text=True)
+    if out.returncode != 0:
+        raise PermanentError(f"Not a readable video: {path.name} ({out.stderr.strip()[:200]})")
+    data = json.loads(out.stdout)
+    v = next((s for s in data["streams"] if s["codec_type"] == "video"), None)
+    if v is None:
+        raise PermanentError(f"No video stream in {path.name}")
+    a = next((s for s in data["streams"] if s["codec_type"] == "audio"), None)
+    num, den = (v.get("avg_frame_rate") or "0/1").split("/")
+    return {
+        "duration": float(data["format"].get("duration", 0)),
+        "width": int(v["width"]), "height": int(v["height"]),
+        "fps": round(float(num) / float(den), 2) if float(den) else 0.0,
+        "vcodec": v.get("codec_name"), "pix_fmt": v.get("pix_fmt"),
+        "has_audio": a is not None, "acodec": a.get("codec_name") if a else None,
+        "size_bytes": int(data["format"].get("size", 0)),
+    }
+
+
+def _video_chain(spec: RenderSpec, seconds: float) -> str:
+    """ffmpeg filter text for the main clip's picture."""
+    W, H = overlays.W, overlays.H
+    parts = [
+        # fill the 9:16 frame, then cut out the 1080x1920 window at crop_x
+        f"scale={W}:{H}:force_original_aspect_ratio=increase",
+        f"crop={W}:{H}:(iw-{W})*{spec.crop_x:.3f}:(ih-{H})/2",
+        f"fps={FPS}",
+    ]
+    if spec.zoom > 1.0:
+        # slow push-in from 100% to spec.zoom over the clip (zoompan: 1 output per input frame)
+        frames = max(1, int(seconds * FPS))  # reach full zoom at the clip's end
+        parts.append(f"zoompan=z='min(1+({spec.zoom:.3f}-1)*on/{frames},{spec.zoom:.3f})':"
+                     f"x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=1:s={W}x{H}:fps={FPS}")
+    parts += [f"scale={W}:{H}", "setsar=1"]
+    if spec.look == "bw":
+        parts.append("hue=s=0,eq=contrast=1.08:brightness=-0.02")
+    return ",".join(parts)
+
+
+def build_command(src: Path, src_info: dict, spec: RenderSpec, out: Path, workdir: Path) -> list[str]:
+    """Build (but don't run) the ffmpeg command. Kept separate so tests can inspect it."""
+    dur = max(0.1, min(spec.max_seconds, src_info["duration"] - spec.start))
+    cmd = ["ffmpeg", "-y", "-v", "error", "-ss", f"{spec.start:.3f}", "-t", f"{dur:.3f}",
+           "-i", str(src)]
+    inputs = 1
+    overlay_inputs = []
+    if spec.watermark:
+        wm = workdir / "watermark.png"
+        overlays.watermark_png(wm)
+        cmd += ["-loop", "1", "-t", f"{dur:.3f}", "-i", str(wm)]
+        overlay_inputs.append(inputs)
+        inputs += 1
+    if spec.caption:
+        cap = workdir / "caption.png"
+        overlays.caption_png(spec.caption, cap)
+        cmd += ["-loop", "1", "-t", f"{dur:.3f}", "-i", str(cap)]
+        overlay_inputs.append(inputs)
+        inputs += 1
+    if not src_info["has_audio"]:
+        cmd += ["-f", "lavfi", "-t", f"{dur:.3f}", "-i", "anullsrc=r=48000:cl=stereo"]
+        audio_in = f"[{inputs}:a]"
+        inputs += 1
+    else:
+        audio_in = "[0:a]"
+    if spec.end_card:
+        card = workdir / "endcard.png"
+        overlays.end_card_png(card)
+        cmd += ["-loop", "1", "-t", f"{END_CARD_SECONDS}", "-framerate", str(FPS), "-i", str(card),
+                "-f", "lavfi", "-t", f"{END_CARD_SECONDS}", "-i", "anullsrc=r=48000:cl=stereo"]
+        card_v, card_a = inputs, inputs + 1
+        inputs += 2
+
+    fc = [f"[0:v]{_video_chain(spec, dur)}[base]"]
+    last = "base"
+    for i, idx in enumerate(overlay_inputs):
+        fc.append(f"[{last}][{idx}:v]overlay=0:0:shortest=1[ov{i}]")
+        last = f"ov{i}"
+    fc.append(f"[{last}]format=yuv420p[mainv]")
+    fc.append(f"{audio_in}aresample=48000,loudnorm=I={TARGET_LUFS}:TP=-1.5:LRA=11,"
+              f"aresample=48000[maina]")
+    if spec.end_card:
+        fc.append(f"[{card_v}:v]scale={overlays.W}:{overlays.H},fps={FPS},setsar=1,format=yuv420p[cv]")
+        fc.append(f"[{card_a}:a]aresample=48000[ca]")
+        fc.append("[mainv][maina][cv][ca]concat=n=2:v=1:a=1[outv][outa]")
+        vmap, amap = "[outv]", "[outa]"
+    else:
+        vmap, amap = "[mainv]", "[maina]"
+    cmd += ["-filter_complex", ";".join(fc), "-map", vmap, "-map", amap,
+            "-c:v", "libx264", "-preset", "medium", "-crf", "20", "-profile:v", "high",
+            "-pix_fmt", "yuv420p", "-r", str(FPS),
+            "-c:a", "aac", "-b:a", "192k", "-ar", "48000",
+            "-movflags", "+faststart", str(out)]
+    return cmd
+
+
+def measure_lufs(path: Path) -> float | None:
+    """Integrated loudness of a file, using ffmpeg's ebur128 meter."""
+    out = subprocess.run(["ffmpeg", "-hide_banner", "-nostats", "-i", str(path),
+                          "-af", "ebur128", "-f", "null", "-"], capture_output=True, text=True)
+    m = re.findall(r"I:\s+(-?\d+(?:\.\d+)?) LUFS", out.stderr)
+    return float(m[-1]) if m else None
+
+
+def quality_check(path: Path, spec: RenderSpec, caption_box: overlays.Box | None,
+                  silent_source: bool) -> dict:
+    """Inspect a finished file. Every check must pass or the render is marked failed."""
+    info = probe(path)
+    expected_extra = END_CARD_SECONDS if spec.end_card else 0
+    checks = {
+        "resolution 1080x1920": (info["width"], info["height"]) == (overlays.W, overlays.H),
+        "video codec h264, yuv420p": info["vcodec"] == "h264" and info["pix_fmt"] == "yuv420p",
+        f"frame rate {FPS}": abs(info["fps"] - FPS) < 0.5,
+        f"length {MIN_SECONDS:.0f}-{MAX_SECONDS + expected_extra:.0f}s":
+            MIN_SECONDS <= info["duration"] <= MAX_SECONDS + expected_extra + 0.5,
+        "has audio track (aac)": info["has_audio"] and info["acodec"] == "aac",
+        "file under 250 MB": info["size_bytes"] < 250 * 1024 * 1024,
+        "caption inside safe zone": caption_box is None or overlays.SAFE.contains(caption_box),
+    }
+    lufs = measure_lufs(path)
+    if not silent_source:
+        checks[f"loudness {TARGET_LUFS:.0f} LUFS (+/-3)"] = (
+            lufs is not None and abs(lufs - TARGET_LUFS) <= 3.0)
+    return {"passed": all(checks.values()), "checks": checks, "lufs": lufs, "info": info}
+
+
+def render(src: Path, spec: RenderSpec, out_dir: Path) -> dict:
+    """Render one spec. Idempotent: if the same output already exists and passed, reuse it."""
+    require_ffmpeg()
+    src_info = probe(src)
+    if src_info["duration"] - spec.start < MIN_SECONDS:
+        raise PermanentError(f"{src.name} is too short to cut from ({src_info['duration']:.1f}s)")
+    sha = file_sha(src)
+    key = spec.key(sha)
+    out_dir.mkdir(parents=True, exist_ok=True)
+    out = out_dir / f"{src.stem}_{key}.mp4"
+    work = out_dir / f".work_{key}"
+    work.mkdir(exist_ok=True)
+    caption_box = overlays.caption_png(spec.caption, work / "caption_check.png") if spec.caption else None
+    if not out.exists():
+        cmd = build_command(src, src_info, spec, out, work)
+        proc = subprocess.run(cmd, capture_output=True, text=True)
+        if proc.returncode != 0:
+            out.unlink(missing_ok=True)
+            raise PermanentError(f"ffmpeg failed: {proc.stderr.strip()[-400:]}")
+    qc = quality_check(out, spec, caption_box, silent_source=not src_info["has_audio"])
+    shutil.rmtree(work, ignore_errors=True)
+    log.info(f"Rendered {out.name}: QC {'passed' if qc['passed'] else 'FAILED'}")
+    return {"key": key, "source_sha": sha, "output": str(out), "spec": asdict(spec), "qc": qc}
+
+
+def variant_specs(base: RenderSpec, captions: list[str], n: int, src_seconds: float) -> list[RenderSpec]:
+    """The main version plus up to n distinct variants. Each changes several things at once
+    (look, crop, zoom, length, caption) so they are not near-copies of each other."""
+    caps = captions or [base.caption]
+    pick = lambda i: caps[i % len(caps)]
+    short = max(MIN_SECONDS + 1, min(base.max_seconds, src_seconds) * 0.6)
+    recipes = [
+        dict(),                                                  # main
+        dict(look="bw"),
+        dict(crop_x=0.3, zoom=1.08),
+        dict(look="bw", max_seconds=short, zoom=1.05),
+        dict(crop_x=0.7),
+        dict(look="bw", crop_x=0.4, zoom=1.1),
+    ]
+    specs = []
+    for i, r in enumerate(recipes[: n + 1]):
+        specs.append(replace(base, caption=pick(i), **r))
+    return specs
+
+
+def make_test_clip(out: Path, seconds: float = 8.0) -> Path:
+    """A synthetic landscape clip with a tone, for `render-test` (no footage needed)."""
+    require_ffmpeg()
+    out.parent.mkdir(parents=True, exist_ok=True)
+    cmd = ["ffmpeg", "-y", "-v", "error",
+           "-f", "lavfi", "-i", f"testsrc2=size=1920x1080:rate=30:duration={seconds}",
+           "-f", "lavfi", "-i", f"sine=frequency=220:sample_rate=48000:duration={seconds}",
+           "-filter:a", "volume=0.2", "-c:v", "libx264", "-pix_fmt", "yuv420p",
+           "-c:a", "aac", "-shortest", str(out)]
+    proc = subprocess.run(cmd, capture_output=True, text=True)
+    if proc.returncode != 0:
+        raise PermanentError(f"Could not make test clip: {proc.stderr[-300:]}")
+    return out

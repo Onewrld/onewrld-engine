@@ -37,6 +37,8 @@ jobs:
       uses: actions/setup-python@v5
       with:
         python-version: ${{ matrix.python-version }}
+    - name: Install ffmpeg (Video Studio tests render real videos)
+      run: sudo apt-get update -q && sudo apt-get install -y -q ffmpeg
     - name: Install the project
       run: |
         python -m pip install --upgrade pip

@@ -157,3 +157,18 @@ Then:
 | `python -m onewrld captions score "text"` | Checks any caption you write against the brand rules. |
 
 The rules live in `brand/brand_bible.toml`. To ban a phrase, add it to `banned_phrases` and save; it takes effect immediately.
+
+## 13. Video Studio
+Needs ffmpeg (section 0, step 3). Check with `python -m onewrld health`: the ffmpeg line should say OK.
+
+| Command | What it does |
+|---|---|
+| `python -m onewrld render-test` | Makes a sample clip and renders it 4 ways. Use it to check everything works. |
+| `python -m onewrld render "C:\path\to\clip.mp4"` | Renders your clip: main version + 3 variants, each with one of your approved captions, logo, end card, quality-checked. |
+| `python -m onewrld render clip.mp4 --caption "your text"` | Same, but with the caption you type. |
+| `python -m onewrld render clip.mp4 --variants 5 --seconds 20` | More variants (max 5) or a shorter max length. |
+| `python -m onewrld renders` | Lists recent renders and whether each passed the quality check. |
+
+Finished videos go in the `renders` folder inside the project. Open it with: `explorer renders`.
+**Tip:** drag a video file onto the PowerShell window to paste its full path.
+Rendering takes about 10 to 40 seconds per version, depending on clip length and your PC.

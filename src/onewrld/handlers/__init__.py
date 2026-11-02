@@ -5,3 +5,4 @@ Importing this package registers every handler with the job queue. Each later mo
 """
 
 from onewrld.handlers import demo  # noqa: F401  (import registers the handlers)
+from onewrld import videos  # noqa: F401  (registers video.render)

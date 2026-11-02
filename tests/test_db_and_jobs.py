@@ -222,3 +222,13 @@ def test_unrelated_schema_is_not_treated_as_ours(db_settings):
     finally:
         with psycopg.connect(db_settings.database_url, autocommit=True) as c:
             c.execute(f"DROP SCHEMA IF EXISTS {empty} CASCADE")
+
+
+
+def test_worker_only_ids_ignores_unrelated_jobs(db_settings, conn):  # M-008
+    other, _ = jobs.enqueue(conn, "demo.post", {}, "leftover-from-earlier")
+    mine = [jobs.enqueue(conn, "demo.post", {}, f"mine-{i}")[0] for i in range(3)]
+    stats = run_worker(db_settings, max_jobs=3, max_seconds=30, only_ids=mine)
+    assert stats["done"] == 3
+    assert all(_job(conn, j)["status"] == "done" for j in mine)
+    assert _job(conn, other)["status"] == "queued"  # untouched

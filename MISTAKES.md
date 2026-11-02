@@ -48,3 +48,8 @@ Every failure gets: what happened · root cause · fix · regression test that p
 ## M-007 (2026-11-02): A commit was pushed with a failing test
 - **Root cause:** My commit command ran `python -m onewrld test | tail -1 && git commit …`. A pipe returns the exit code of its LAST command (`tail`, which always succeeds), so the failure didn't stop the commit. The failing test was correct: it caught that two batch-2 captions now break the new "no talking down" ban.
 - **Fix:** Removed the 5 owner-rejected captions from the batch-2 file. All my commit commands now run with `set -o pipefail`, so any failure stops the chain. GitHub's automatic test run is the second safety net.
+
+## M-008 (2026-11-02): `render-test` rendered 3 of 4 versions
+- **Root cause:** The render command ran the general worker with a budget of 4 jobs. An old leftover job sitting in the queue (from an earlier kill-switch drill) used up one of the 4 slots, so the last render never ran. This would also happen on the owner's PC if old jobs were waiting.
+- **Fix:** The worker accepts `only_ids`, and `render` only processes the jobs it just queued. Other queued jobs are left untouched.
+- **Test:** `test_worker_only_ids_ignores_unrelated_jobs`.
