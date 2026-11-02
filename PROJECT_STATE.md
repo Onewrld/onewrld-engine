@@ -9,7 +9,7 @@ _Last updated: 2026-11-02_
 | Done | Phase 0 plan. Module 1.1 (skeleton and safety). Module 1.2 (database, job queue, worker, alerts, database kill switch). Module 1.3 (email alerts with caps, log rotation, `phase1-check`; 43 tests pass) |
 | Current | Collecting Phase 2 inputs from the owner |
 | Next | Phase 2: Brand Brain (brand bible, hook library, caption generator, scoring, feedback) |
-| Blockers | Anthropic API key (with spend limit); brand material (logo, fonts, colors, captions liked and disliked) |
+| Blockers | Brand material from the owner (captions liked and disliked, colors, fonts, next drops). No API key needed yet (D-029) |
 
 ## Phase checklist
 - [x] Phase 0: Plan and feasibility
@@ -26,7 +26,7 @@ _Last updated: 2026-11-02_
 ## Credentials still needed (names only, never values)
 - `DATABASE_URL`: done
 - `SMTP_USER`, `SMTP_APP_PASSWORD` (Gmail app password): now
-- `ANTHROPIC_API_KEY` (with a monthly spend limit set in the Anthropic console): Phase 2
+- `ANTHROPIC_API_KEY` (with a monthly spend limit): deferred to Phase 4B/5 (D-029)
 - Shopify custom-app Admin API token (read-only): Phase 4
 - Meta app and tokens, posting-layer API key, X API keys: Phase 5
 

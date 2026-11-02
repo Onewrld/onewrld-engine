@@ -116,3 +116,8 @@ Every decision is written as Decision / Why / What if. Newest at the bottom.
 ## D-028: Schema is set by an explicit command and verified on every connection
 - **Why:** Bug M-004: a connection option was silently ignored by Supabase's pooler. Explicit `SET` + check means a wrong schema causes an error, never silent damage.
 - **What if:** If we ever must use the transaction pooler (port 6543), switch to fully qualified table names (`engine.job`). Until then, port 6543 is refused.
+
+## D-029: No paid AI key yet. Phase 2 is built so the paid part is optional.
+- **Decision:** Build Phase 2 without an Anthropic API key. The brand bible, banned-phrase checks, rule-based scoring, hook library, approval flow and feedback capture are all plain code and cost $0. The first caption batches and the hook library are drafted by Claude in these build sessions (covered by the owner's existing Claude plan), loaded into the database, scored, and approved or rejected by the owner.
+- **Why:** The only part that truly needs a paid key is the system writing captions *on its own, unattended, at volume*. That doesn't matter until automated publishing (Phases 4B and 5). Paying now buys nothing we can't do for free yet, and the budget is tight.
+- **What if:** When automated generation is needed, add `ANTHROPIC_API_KEY` with a hard monthly limit (estimated $5 to $15/mo). The generator is written behind one function, so switching it on is a settings change, not a rebuild. If that cost is ever unwanted, the system keeps working on human-written or session-drafted captions; it just produces fewer variants.
