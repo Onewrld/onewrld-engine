@@ -121,3 +121,13 @@ Every decision is written as Decision / Why / What if. Newest at the bottom.
 - **Decision:** Build Phase 2 without an Anthropic API key. The brand bible, banned-phrase checks, rule-based scoring, hook library, approval flow and feedback capture are all plain code and cost $0. The first caption batches and the hook library are drafted by Claude in these build sessions (covered by the owner's existing Claude plan), loaded into the database, scored, and approved or rejected by the owner.
 - **Why:** The only part that truly needs a paid key is the system writing captions *on its own, unattended, at volume*. That doesn't matter until automated publishing (Phases 4B and 5). Paying now buys nothing we can't do for free yet, and the budget is tight.
 - **What if:** When automated generation is needed, add `ANTHROPIC_API_KEY` with a hard monthly limit (estimated $5 to $15/mo). The generator is written behind one function, so switching it on is a settings change, not a rebuild. If that cost is ever unwanted, the system keeps working on human-written or session-drafted captions; it just produces fewer variants.
+
+## D-030: Reorder the build around the December drop
+- **Decision:** Order is now 2-lite (voice quiz, caption bank, banned phrases, scoring) → shoot day → 3 (Video Studio) → 3.5 (manual posting kit with tracked links) → 4-lite (Shopify sales attribution) → December drop. Automated publishing (5) and ads (7) come after the December drop.
+- **Why:** The owner wants heavy volume now, and the bottleneck is footage and editing, not automation. Manual posting starts as soon as the first videos are cut; automation can't help before content exists.
+- **What if:** If the shoot slips, Phase 3 slips with it. That's the one dependency to protect. Fallback: post existing product photos and old clips with new captions.
+
+## D-031: Volume with per-platform caps
+- **Decision:** Heavy volume = the same strong video posted once on each of IG, TikTok, YouTube Shorts and FB (plus a text version on X), at 1 to 3 different videos per day. That's 5 to 15 posts a day across platforms.
+- **Why:** Posting the same video on different platforms is normal and safe. Reposting near-copies on the SAME platform triggers originality penalties (Instagram April 2026 rule; TikTok and YouTube similar).
+- **What if:** If reach per post holds, raise to 3 to 5 videos a day; if it drops, pull back.

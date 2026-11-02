@@ -8,8 +8,11 @@ Full plan: `docs/PHASE0_PLAN.md`. Current state: `PROJECT_STATE.md`.
 - Brand: ONEWRLD (all caps), Onewrld LLC, Staten Island NY.
 - About 75% of drops are ONEWRLD-only collections (for example *Fall of Icarus*). Gym collabs (Intox, Rare Breed) are a small leverage play for reach and events.
 - Platforms in use: Instagram @onewrld.us, TikTok @onewrld.US, X @onewrldus, YouTube @onewrldus, Facebook (linked to IG).
-- Store: onewrld.us (Shopify Basic, Dawn theme). Website font: Assistant (regular). Colors: black/white (#121212, #000000, #FFFFFF).
+- Store: onewrld.us (Shopify Basic, Dawn theme). Colors: black/white (#121212, #000000, #FFFFFF).
+- Logo: lowercase blackletter (gothic) wordmark "onewrld", white on transparent: `assets/brand/logo_white_transparent.png`. Website body font: Assistant. Rule: blackletter only for logo/titles; on-video captions use a clean sans for readability.
 - Next drop: about mid-December 2026 (name/theme TBD).
+- Strategy (owner, 2026-11-02): heavy content volume NOW to sell out the remaining Fall of Icarus stock and build a cult-like following; switch content to the new drop about 2 weeks before release.
+- Stock on 2026-11-02 (Shopify): Fall of Icarus Zip Hoodie $49.99, 12 left (S3 M1 L3 XL2 2XL3). Fall of Icarus Sweatpants $46.95, 11 left (S2 M1 L3 XL1 2XL4). Acid Wash Hat $21.99, 10. Shaker Cup $7.99, 40. Every other product is sold out.
 - Stack: Shopify, Enlistly (10% affiliate), Supabase (this project has its own, separate from the partner portal), Netlify.
 - Owner: Adam. Windows PC. Full-time job. Beginner coder. Gets overwhelmed quickly. Budget about $1,000.
 
