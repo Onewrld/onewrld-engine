@@ -9,11 +9,11 @@ learns from.
 from __future__ import annotations
 
 import hashlib
+import tomllib
 from pathlib import Path
 from typing import Callable
 
 import psycopg
-import yaml
 from psycopg.types.json import Jsonb
 
 from onewrld.brand import QUALITY_FLOOR, score_caption
@@ -54,7 +54,7 @@ def add_caption(conn: psycopg.Connection, text: str, *, pillar: str | None = Non
 
 
 def import_file(conn: psycopg.Connection, path: Path) -> dict[str, int]:
-    data = yaml.safe_load(path.read_text(encoding="utf-8"))
+    data = tomllib.loads(path.read_text(encoding="utf-8"))
     product = data.get("product")
     stats = {"new": 0, "already_had": 0, "blocked": 0, "below_floor": 0, "to_review": 0}
     for item in data["captions"]:

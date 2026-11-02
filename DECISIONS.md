@@ -142,4 +142,8 @@ Every decision is written as Decision / Why / What if. Newest at the bottom.
 - **Edits:** Your edit saves the original as rejected (with your reason) and your version as approved, linked together. That before/after pair is the strongest learning signal there is.
 
 ## D-034: The seed caption bank includes deliberately bad captions
-- **Why:** It proves the scorer blocks them ("No days off. Built different. 🔥🔥", "Last chance… !!"), and two borderline ones test where your line is. They're labeled in the YAML file.
+- **Why:** It proves the scorer blocks them ("No days off. Built different. 🔥🔥", "Last chance… !!"), and two borderline ones test where your line is. They're labeled in the caption file.
+
+## D-035: Brand files use TOML, not YAML
+- **Why:** TOML is read by Python's built-in `tomllib`, so there's nothing to install and no build failures on Windows (M-006). It's just as readable: text in quotes, lists in brackets, `#` for notes.
+- **What if:** If a file has a typo, the error names the line. Run `python -m onewrld captions score "test"` after editing the brand bible to check it still loads.

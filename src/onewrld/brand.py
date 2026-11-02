@@ -1,4 +1,4 @@
-"""Brand Brain scorer: checks a caption against brand/brand_bible.yaml. Free; no AI.
+"""Brand Brain scorer: checks a caption against brand/brand_bible.toml. Free; no AI.
 
 score_caption() returns a score 0-100, whether it is BLOCKED, and the reasons.
 - Blocked (score 0): contains a banned phrase. It can never be used, regardless of score.
@@ -9,12 +9,12 @@ QUALITY_FLOOR is the minimum score a caption needs to be offered for approval at
 from __future__ import annotations
 
 import re
+import tomllib
 import unicodedata
 from dataclasses import dataclass, field
 from functools import lru_cache
 from pathlib import Path
 
-import yaml
 
 from onewrld.config import PROJECT_ROOT
 
@@ -35,12 +35,13 @@ class Score:
 
 @lru_cache(maxsize=4)
 def _load_bible(path: str, mtime: float) -> dict:
-    # mtime in the cache key: editing the YAML takes effect without restarting.
-    return yaml.safe_load(Path(path).read_text(encoding="utf-8"))
+    # mtime in the cache key: editing the file takes effect without restarting.
+    # tomllib is built into Python 3.11+, so nothing extra to install (M-006).
+    return tomllib.loads(Path(path).read_text(encoding="utf-8"))
 
 
 def load_bible(path: Path | None = None) -> dict:
-    path = path or BRAND_DIR / "brand_bible.yaml"
+    path = path or BRAND_DIR / "brand_bible.toml"
     return _load_bible(str(path), path.stat().st_mtime)
 
 

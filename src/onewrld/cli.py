@@ -221,7 +221,7 @@ def _cmd_captions(settings, action: str, text: str | None, limit: int) -> int:
         return 0
     with db.connect(settings) as conn:
         if action == "import":
-            files = sorted(brand.BRAND_DIR.glob("captions_*.yaml"))
+            files = sorted(brand.BRAND_DIR.glob("captions_*.toml"))
             for f in files:
                 st = captions.import_file(conn, f)
                 print(f"{f.name}: {st['new']} new ({st['to_review']} to review, "

@@ -39,3 +39,8 @@ Every failure gets: what happened · root cause · fix · regression test that p
   - The two tests now use their own empty throwaway schemas.
   - New `diagnose` command: a paste-safe report (kill flags with reasons, where tables live, recent errors, failing tests) so the next problem is diagnosed from facts instead of guesses.
 - **Rule added to CLAUDE.md:** tests must never read or write anything outside their own throwaway space.
+
+## M-006 (2026-11-02): `pip install -e ".[dev]"` failed on the owner's PC: "Failed building wheel for pyyaml"
+- **Root cause:** Phase 2.1 added the PyYAML package. On the owner's Windows PC, pip found no ready-made download (a "wheel") for his Python version, tried to compile it from source, and failed. My workspace (Linux) had a ready-made download, so I never saw it. The exact trigger (likely a Python version newer than PyYAML's published wheels) is unconfirmed.
+- **Fix:** Removed the dependency entirely. The brand files are now TOML (`brand/*.toml`), read by Python's built-in `tomllib`, so there's nothing to install. Data verified identical after conversion. All tests pass with PyYAML uninstalled.
+- **Rule added (CLAUDE.md):** prefer Python's built-in modules. Any new package must have a ready-made Windows download for the owner's Python version, or it doesn't go in.

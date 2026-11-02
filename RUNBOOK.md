@@ -155,4 +155,4 @@ Then:
 | `python -m onewrld captions list` | Every caption with its score and status. |
 | `python -m onewrld captions score "text"` | Checks any caption you write against the brand rules. |
 
-The rules live in `brand/brand_bible.yaml`. To ban a phrase, add it to `banned_phrases` and save; it takes effect immediately.
+The rules live in `brand/brand_bible.toml`. To ban a phrase, add it to `banned_phrases` and save; it takes effect immediately.

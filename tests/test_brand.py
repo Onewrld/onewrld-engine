@@ -48,8 +48,8 @@ def test_allowed_caps():
 
 
 def test_seed_bank_borderline_captions_are_caught():
-    import yaml
-    data = yaml.safe_load((brand.BRAND_DIR / "captions_fall_of_icarus.yaml").read_text())
+    import tomllib
+    data = tomllib.loads((brand.BRAND_DIR / "captions_fall_of_icarus.toml").read_text(encoding="utf-8"))
     blocked = [c["text"] for c in data["captions"] if brand.score_caption(c["text"]).blocked]
     assert "No days off. Built different. 🔥🔥" in blocked
     assert "Last chance to grab Fall of Icarus before it's gone!!" in blocked
@@ -58,7 +58,7 @@ def test_seed_bank_borderline_captions_are_caught():
 # --- captions with database -------------------------------------------------
 
 def test_import_is_idempotent_and_routes_by_score(conn):
-    path = brand.BRAND_DIR / "captions_fall_of_icarus.yaml"
+    path = brand.BRAND_DIR / "captions_fall_of_icarus.toml"
     first = captions.import_file(conn, path)
     assert first["new"] >= 25 and first["blocked"] >= 2 and first["to_review"] >= 20
     second = captions.import_file(conn, path)

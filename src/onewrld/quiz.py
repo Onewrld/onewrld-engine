@@ -5,8 +5,9 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import Callable
 
+import tomllib
+
 import psycopg
-import yaml
 
 from onewrld.brand import BRAND_DIR
 
@@ -15,7 +16,7 @@ CHOICES = {"a": "a", "b": "b", "1": "a", "2": "b", "both": "both", "n": "neither
 
 
 def load_pairs() -> list[dict]:
-    return yaml.safe_load((BRAND_DIR / "voice_quiz.yaml").read_text(encoding="utf-8"))["pairs"]
+    return tomllib.loads((BRAND_DIR / "voice_quiz.toml").read_text(encoding="utf-8"))["pairs"]
 
 
 def save_answer(conn: psycopg.Connection, pair: dict, choice: str) -> None:

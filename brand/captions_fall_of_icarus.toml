@@ -1,0 +1,136 @@
+# Caption bank: Fall of Icarus (batch 1). Written in a build session (D-029, $0).
+# fact_check = true means the caption states a fact that must still be true on the
+# day it is posted (stock, sizes, where it ships from).
+# To add a caption: copy a [[captions]] block, change the text, run `captions import`.
+
+product = "onewrld-fall-of-icarus-zip-hoodie"
+
+# story
+[[captions]]
+pillar = "story"
+text = "Icarus fell because he tried. Most people never leave the ground."
+
+[[captions]]
+pillar = "story"
+text = "Nobody gave us a head start. We stopped waiting for one."
+
+[[captions]]
+pillar = "story"
+text = "They'll call it luck once it works. Let them."
+
+[[captions]]
+pillar = "story"
+text = "Built for the ones who flew anyway."
+
+[[captions]]
+pillar = "story"
+text = "The fall isn't the story. What you do after is."
+
+[[captions]]
+pillar = "story"
+text = "Some people watch the sun. Some fly at it."
+
+[[captions]]
+pillar = "story"
+text = "Everyone remembers that Icarus fell. Nobody talks about the fact that he flew."
+
+[[captions]]
+pillar = "story"
+text = "Fly anyway."
+
+[[captions]]
+pillar = "story"
+text = "Not for everyone. That's the point."
+
+# product
+[[captions]]
+pillar = "product"
+text = "480 GSM cotton. You feel the weight the second you pick it up."
+
+[[captions]]
+pillar = "product"
+text = "Fall of Icarus zip hoodie. Heavy cotton, made to last years, not a season."
+
+[[captions]]
+pillar = "product"
+text = "The wash is different on every pair. Darker in the folds, lighter where it wears."
+
+[[captions]]
+pillar = "product"
+text = "Full set. Hoodie and sweats. Made to be lived in."
+
+[[captions]]
+pillar = "product"
+text = "Heavy enough that you notice when you take it off."
+
+# proof (true facts only)
+[[captions]]
+pillar = "proof"
+fact_check = true
+text = "Everything before this sold out. Fall of Icarus is the last one standing."
+
+[[captions]]
+pillar = "proof"
+fact_check = true
+text = "Medium is down to one in both pieces."
+
+[[captions]]
+pillar = "proof"
+fact_check = true
+text = "Last few Fall of Icarus hoodies. Sizes are on the site."
+
+[[captions]]
+pillar = "proof"
+fact_check = true
+text = "Packed by hand. Shipped from Staten Island."
+
+# founder
+[[captions]]
+pillar = "founder"
+text = "I started ONEWRLD for people like me. No connections, no shortcuts, no plan B."
+
+[[captions]]
+pillar = "founder"
+text = "Two and a half years in. Still doing almost all of it myself."
+
+[[captions]]
+pillar = "founder"
+text = "I work a full-time job and build this at night. That's the brand."
+
+[[captions]]
+pillar = "founder"
+text = "Every order still goes through my hands."
+
+# gym
+[[captions]]
+pillar = "gym"
+text = "Discipline looks boring from the outside."
+
+[[captions]]
+pillar = "gym"
+text = "6am. Empty gym. Nobody watching. That's where it's built."
+
+[[captions]]
+pillar = "gym"
+text = "Wear it to train. Wear it everywhere after."
+
+[[captions]]
+pillar = "gym"
+text = "Nobody saw the hours. That was never the point."
+
+# deliberately borderline: tests where your line is
+[[captions]]
+pillar = "story"
+text = "Burned once. Built twice."
+
+[[captions]]
+pillar = "product"
+text = "Heavy hoodie. Heavier meaning."
+
+[[captions]]
+pillar = "proof"
+text = "Last chance to grab Fall of Icarus before it's gone!!"
+
+[[captions]]
+pillar = "gym"
+text = "No days off. Built different. 🔥🔥"
