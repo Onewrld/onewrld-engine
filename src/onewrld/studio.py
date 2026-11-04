@@ -23,16 +23,23 @@ import subprocess
 from dataclasses import asdict, dataclass, replace
 from pathlib import Path
 
-from onewrld import overlays
+from onewrld import overlays, speech
 from onewrld.errors import PermanentError
 from onewrld.logging_setup import get_logger
 
 log = get_logger(__name__)
 
+# Bump when the render pipeline changes in a way that changes the output (e.g. the audio
+# chain), so old cached renders aren't reused. 2 = Phase 3.2 voice cleanup + measured gain.
+RENDER_VERSION = 2
 FPS = 30
 END_CARD_SECONDS = 1.5
 TARGET_LUFS = -14.0
 MIN_SECONDS, MAX_SECONDS = 3.0, 90.0
+# Voice cleanup before leveling: cut rumble below 70 Hz, then compress (4:1 above
+# about -26 dB) so sharp peaks don't stop the leveler reaching -14 LUFS. Same idea as the
+# voice chain podcast and social editors use.
+AUDIO_CLEAN = "highpass=f=70,acompressor=threshold=0.05:ratio=4:attack=2:release=120:makeup=3"
 
 
 @dataclass(frozen=True)
@@ -46,9 +53,11 @@ class RenderSpec:
     start: float = 0.0
     end_card: bool = True
     watermark: bool = True
+    speech_captions: bool = False  # word-by-word captions from the speech (replaces `caption` on screen)
+    cut_silence: bool = False      # cut pauses longer than speech.MAX_GAP
 
     def key(self, source_sha: str) -> str:
-        blob = json.dumps({"src": source_sha, **asdict(self)}, sort_keys=True)
+        blob = json.dumps({"src": source_sha, "v": RENDER_VERSION, **asdict(self)}, sort_keys=True)
         return hashlib.sha256(blob.encode()).hexdigest()[:16]
 
 
@@ -109,9 +118,64 @@ def _video_chain(spec: RenderSpec, seconds: float) -> str:
     return ",".join(parts)
 
 
-def build_command(src: Path, src_info: dict, spec: RenderSpec, out: Path, workdir: Path) -> list[str]:
-    """Build (but don't run) the ffmpeg command. Kept separate so tests can inspect it."""
+def plan_speech(words: list, spec: RenderSpec, dur: float):
+    """Words shifted to the clip's own timeline (0 = spec.start), the stretches to keep,
+    and the words re-timed after the cuts. Returns (segments or None, words_for_captions)."""
+    local = [speech.Word(w.text, round(w.start - spec.start, 3), round(w.end - spec.start, 3))
+             for w in words if w.start >= spec.start and w.end <= spec.start + dur]
+    if spec.cut_silence:
+        segs = speech.keep_segments(local, dur)
+        return segs, speech.remap(local, segs)
+    return None, local
+
+
+PEAK_LIMIT = 0.84  # about -1.5 dBFS: headroom so platforms' own encoding doesn't distort
+
+
+def _loudnorm(measured: dict | None) -> str:
+    """Pass 2 of loudness leveling. With a measurement: apply the exact gain needed to reach
+    TARGET_LUFS, then a limiter catches only the peaks that would go over -1.5 dB. (The
+    loudnorm filter's own 'linear' mode refuses to add gain to peaky audio such as phone
+    voice recordings, and undershoots by 3 to 4 dB; see M-009.)
+    Without a measurement: loudnorm's single-pass mode as a fallback."""
+    if not measured:
+        return f"loudnorm=I={TARGET_LUFS}:TP=-1.5:LRA=11"
+    gain = max(-20.0, min(30.0, TARGET_LUFS - float(measured["input_i"])))
+    return f"volume={gain:.2f}dB,alimiter=limit={PEAK_LIMIT}:attack=5:release=50:level=false"
+
+
+def measure_loudness(src: Path, spec: RenderSpec, dur: float, apre: str) -> dict | None:
+    """Pass 1 of two-pass loudness leveling: measure the exact audio that will be used
+    (same trim and cuts), so pass 2 can apply one precise, even correction."""
+    cmd = ["ffmpeg", "-hide_banner", "-nostats", "-ss", f"{spec.start:.3f}", "-t", f"{dur:.3f}",
+           "-i", str(src), "-af", f"{apre}aresample=48000,{AUDIO_CLEAN},{_loudnorm(None)}:print_format=json",
+           "-f", "null", "-"]
+    out = subprocess.run(cmd, capture_output=True, text=True)
+    m = re.search(r"\{[^{}]*\"input_i\"[^{}]*\}", out.stderr, re.S)
+    if not m:
+        return None
+    data = json.loads(m.group(0))
+    try:
+        if float(data["input_i"]) < -70:  # silence: nothing to level
+            return None
+    except ValueError:
+        return None
+    return data
+
+
+def build_command(src: Path, src_info: dict, spec: RenderSpec, out: Path, workdir: Path,
+                  words: list | None = None, loudness: dict | None = None) -> list[str]:
+    """Build (but don't run) the ffmpeg command. Kept separate so tests can inspect it.
+    `words` (from speech.transcribe) are needed for speech_captions and cut_silence.
+    Run the command with cwd=workdir: subtitle and font files are referenced by relative
+    name, which avoids Windows drive-letter path problems in ffmpeg filters."""
     dur = max(0.1, min(spec.max_seconds, src_info["duration"] - spec.start))
+    segments, cap_words = (None, None)
+    if spec.speech_captions or spec.cut_silence:
+        if words is None:
+            raise PermanentError("speech features need a transcript (words)")
+        segments, cap_words = plan_speech(words, spec, dur)
+    out_dur = sum(e - s for s, e in segments) if segments else dur
     cmd = ["ffmpeg", "-y", "-v", "error", "-ss", f"{spec.start:.3f}", "-t", f"{dur:.3f}",
            "-i", str(src)]
     inputs = 1
@@ -122,7 +186,7 @@ def build_command(src: Path, src_info: dict, spec: RenderSpec, out: Path, workdi
         cmd += ["-loop", "1", "-t", f"{dur:.3f}", "-i", str(wm)]
         overlay_inputs.append(inputs)
         inputs += 1
-    if spec.caption:
+    if spec.caption and not spec.speech_captions:
         cap = workdir / "caption.png"
         overlays.caption_png(spec.caption, cap)
         cmd += ["-loop", "1", "-t", f"{dur:.3f}", "-i", str(cap)]
@@ -142,14 +206,28 @@ def build_command(src: Path, src_info: dict, spec: RenderSpec, out: Path, workdi
         card_v, card_a = inputs, inputs + 1
         inputs += 2
 
-    fc = [f"[0:v]{_video_chain(spec, dur)}[base]"]
+    vpre, apre = "", ""
+    if segments:
+        expr = speech.select_expr(segments)
+        vpre = f"fps={FPS},select='{expr}',setpts=N/({FPS}*TB),"
+        apre = f"aselect='{expr}',asetpts=N/SR/TB,"
+    vpost = ""
+    if spec.speech_captions and cap_words:
+        speech.write_ass(cap_words, workdir / "captions.ass")
+        fonts = workdir / "fonts"
+        fonts.mkdir(exist_ok=True)
+        shutil.copy(overlays.FONT_PATH, fonts / overlays.FONT_PATH.name)
+        vpost = ",subtitles=captions.ass:fontsdir=fonts"
+    fc = [f"[0:v]{vpre}{_video_chain(spec, out_dur)}{vpost}[base]"]
     last = "base"
     for i, idx in enumerate(overlay_inputs):
         fc.append(f"[{last}][{idx}:v]overlay=0:0:shortest=1[ov{i}]")
         last = f"ov{i}"
     fc.append(f"[{last}]format=yuv420p[mainv]")
-    fc.append(f"{audio_in}aresample=48000,loudnorm=I={TARGET_LUFS}:TP=-1.5:LRA=11,"
-              f"aresample=48000[maina]")
+    if not src_info["has_audio"]:
+        apre = ""  # the silent stand-in track is already the right length for an uncut clip
+    clean = f"{AUDIO_CLEAN}," if src_info["has_audio"] else ""
+    fc.append(f"{audio_in}{apre}aresample=48000,{clean}{_loudnorm(loudness)},aresample=48000[maina]")
     if spec.end_card:
         fc.append(f"[{card_v}:v]scale={overlays.W}:{overlays.H},fps={FPS},setsar=1,format=yuv420p[cv]")
         fc.append(f"[{card_a}:a]aresample=48000[ca]")
@@ -195,29 +273,54 @@ def quality_check(path: Path, spec: RenderSpec, caption_box: overlays.Box | None
     return {"passed": all(checks.values()), "checks": checks, "lufs": lufs, "info": info}
 
 
-def render(src: Path, spec: RenderSpec, out_dir: Path) -> dict:
-    """Render one spec. Idempotent: if the same output already exists and passed, reuse it."""
+def render(src: Path, spec: RenderSpec, out_dir: Path, words_provider=None) -> dict:
+    """Render one spec. Idempotent: if the same output already exists and passed, reuse it.
+    words_provider(src, sha) -> list[speech.Word] is used for speech features; by default it
+    transcribes with faster-whisper (cached under out_dir/.transcripts)."""
     require_ffmpeg()
     src_info = probe(src)
     if src_info["duration"] - spec.start < MIN_SECONDS:
         raise PermanentError(f"{src.name} is too short to cut from ({src_info['duration']:.1f}s)")
     sha = file_sha(src)
+    words = None
+    if spec.speech_captions or spec.cut_silence:
+        if not src_info["has_audio"]:
+            raise PermanentError(f"{src.name} has no audio, so speech features can't be used")
+        provider = words_provider or (lambda p, h: speech.transcribe(p, out_dir / ".transcripts", h))
+        words = provider(src, sha)
+        if not words:
+            raise PermanentError(f"No speech found in {src.name}")
     key = spec.key(sha)
     out_dir.mkdir(parents=True, exist_ok=True)
     out = out_dir / f"{src.stem}_{key}.mp4"
     work = out_dir / f".work_{key}"
     work.mkdir(exist_ok=True)
-    caption_box = overlays.caption_png(spec.caption, work / "caption_check.png") if spec.caption else None
+    caption_box = (overlays.caption_png(spec.caption, work / "caption_check.png")
+                   if spec.caption and not spec.speech_captions else None)
     if not out.exists():
-        cmd = build_command(src, src_info, spec, out, work)
-        proc = subprocess.run(cmd, capture_output=True, text=True)
+        loud = None
+        if src_info["has_audio"]:
+            dur = max(0.1, min(spec.max_seconds, src_info["duration"] - spec.start))
+            apre = ""
+            if spec.cut_silence and words:
+                segs, _ = plan_speech(words, spec, dur)
+                apre = f"aselect='{speech.select_expr(segs)}',asetpts=N/SR/TB,"
+            loud = measure_loudness(src, spec, dur, apre)
+        cmd = build_command(src, src_info, spec, out, work, words, loud)
+        proc = subprocess.run(cmd, capture_output=True, text=True, cwd=work)
         if proc.returncode != 0:
             out.unlink(missing_ok=True)
             raise PermanentError(f"ffmpeg failed: {proc.stderr.strip()[-400:]}")
+    srt = None
+    if spec.speech_captions and words is not None:
+        _segs, cap_words = plan_speech(words, spec, max(0.1, min(spec.max_seconds,
+                                                                src_info["duration"] - spec.start)))
+        srt = str(speech.write_srt(cap_words, out.with_suffix(".srt")))
     qc = quality_check(out, spec, caption_box, silent_source=not src_info["has_audio"])
     shutil.rmtree(work, ignore_errors=True)
     log.info(f"Rendered {out.name}: QC {'passed' if qc['passed'] else 'FAILED'}")
-    return {"key": key, "source_sha": sha, "output": str(out), "spec": asdict(spec), "qc": qc}
+    return {"key": key, "source_sha": sha, "output": str(out), "spec": asdict(spec), "qc": qc,
+            "srt": srt}
 
 
 def variant_specs(base: RenderSpec, captions: list[str], n: int, src_seconds: float) -> list[RenderSpec]:

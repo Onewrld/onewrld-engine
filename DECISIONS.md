@@ -172,3 +172,25 @@ Every decision is written as Decision / Why / What if. Newest at the bottom.
 - **Decision:** Each variant changes 2 to 4 of: look (natural or black-and-white), crop position, slow zoom, length, caption.
 - **Why:** Platforms fingerprint footage. A variant must be meaningfully different, not a recolor. Black-and-white is on-brand (your palette). These variants are for TESTING which treatment works (D-008); the strongest gets posted per platform.
 - **What if:** Once the learning loop (Phase 6) has data, it picks the treatments that perform best.
+
+## D-042: Build order after 2026-11-04 (owner approved)
+3.2 speech → 4B Volume Engine → 5 Posting → 4 Sales tracking → December drop. The owner **declined** the AI writer key for now (D-029 stands): captions keep coming from build sessions at $0. Shoot: weekend of 2026-11-07.
+
+## D-043: Speech is an optional install; Python 3.11 to 3.14 recommended
+- **Why:** The speech model needs `onnxruntime`, which has no Windows install for Python 3.15 yet. The owner's PC is almost certainly on 3.15 (PyYAML's failure points to it). Making speech optional means the core system never breaks because of it; the health check says exactly what to do.
+- **What if:** If adding Python 3.13 is a problem, wait for onnxruntime to support 3.15 (usually a few months), or use a paid transcription service (a few cents per minute, with approval first).
+
+## D-044: Word-by-word captions use ASS subtitles, run with relative file names
+- **Why:** ASS is the standard styled-subtitle format, and ffmpeg burns it in fast and sharp. Running ffmpeg *inside* the work folder and naming files without a drive letter avoids the Windows `C:` path problem (same problem as D-039).
+- **Look:** 4 words on screen at most, a new line at each sentence end, the current word white and the others gray (your black-and-white palette), centered in the safe zone.
+
+## D-045: Dead-air cut rule: pauses over 0.6 s go, 0.12 s of air kept around speech
+- **Why:** Tight pacing holds attention on short-form; 0.12 s of padding stops words from being clipped.
+- **What if:** If cuts feel too jumpy, raise `MAX_GAP` in `speech.py` (for example to 0.9).
+
+## D-046: Loudness = voice cleanup, then measured gain, then a peak limiter
+- **Decision:** Pass 1 measures the cleaned audio. Pass 2 applies the exact gain needed for -14 LUFS, then a limiter at -1.5 dB. Single-pass leveling remains as a fallback.
+- **Why:** M-009: ffmpeg's leveler undershoots by 3 to 4 dB on peaky voice. Measured: test tone -14.0, synthetic voice -16.4 (inside the quality gate's +/-3). A real voice should land closer to -14; we confirm on the first real footage.
+
+## D-047: Render fingerprints include a pipeline version
+- **Why:** Re-rendering the same clip reuses the old file (idempotency). When the pipeline itself improves, the version bump makes it render fresh.

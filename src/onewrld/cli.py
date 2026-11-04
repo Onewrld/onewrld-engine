@@ -30,6 +30,8 @@ Video Studio (Phase 3):
   render-test            make a sample clip and render it + 3 variants (see the quality now)
   render FILE            render your clip: main version + variants, quality-checked
                          options: --variants 3  --caption "text"  --seconds 30
+                                  --talk   (talking clip: word-by-word captions + pauses cut)
+  transcribe FILE        show the words the speech model hears, and how long it took
   renders                list recent renders with quality-check results
 
 Demos (nothing real is ever posted):
@@ -273,11 +275,16 @@ def _print_renders(rows) -> None:
 
 
 def _cmd_render(settings, file: str | None, variants: int, caption: str | None,
-                seconds: float) -> int:
+                seconds: float, talk: bool = False) -> int:
     from onewrld import db, studio, videos
     from onewrld.worker import run_worker
 
     studio.require_ffmpeg()
+    if talk:
+        from onewrld import speech
+        if not speech.speech_available():
+            print(speech.install_hint())
+            return 1
     if file is None:  # render-test
         src = studio.make_test_clip(settings.root / "media" / "test_clip.mp4")
         print(f"Made a sample clip: {src}")
@@ -285,7 +292,7 @@ def _cmd_render(settings, file: str | None, variants: int, caption: str | None,
         src = Path(file)
     with db.connect(settings) as conn:
         asset = videos.register_asset(conn, src)
-        job_ids = videos.plan(conn, asset, variants, caption, seconds)
+        job_ids = videos.plan(conn, asset, variants, caption, seconds, talk)
     print(f"Rendering {len(job_ids)} version(s). This can take a few minutes...")
     run_worker(settings, max_jobs=len(job_ids), max_seconds=3600, only_ids=job_ids)
     with db.connect(settings) as conn:
@@ -299,6 +306,27 @@ def _cmd_render(settings, file: str | None, variants: int, caption: str | None,
         print(f"  job #{d['id']} failed: {d['last_error'][:200]}")
     print(f"\nVideos are in: {videos.renders_dir(settings)}")
     return 0 if rows and all(r["qc_passed"] for r in rows) and not dead else 1
+
+
+def _cmd_transcribe(settings, file: str) -> int:
+    import time
+    from onewrld import speech, studio, videos
+
+    src = Path(file)
+    if not speech.speech_available():
+        print(speech.install_hint())
+        return 1
+    t0 = time.monotonic()
+    words = speech.transcribe(src, videos.renders_dir(settings) / ".transcripts",
+                              studio.file_sha(src))
+    took = time.monotonic() - t0
+    dur = studio.probe(src)["duration"]
+    segs = speech.keep_segments(words, dur)
+    kept = sum(e - s for s, e in segs)
+    print(" ".join(w.text for w in words))
+    print(f"\n{len(words)} words in a {dur:.0f}s clip; transcribed in {took:.0f}s "
+          f"(cached for next time). Cutting pauses would keep {kept:.0f}s of {dur:.0f}s.")
+    return 0
 
 
 def _cmd_renders(settings) -> int:
@@ -344,6 +372,9 @@ def main(argv: list[str] | None = None) -> int:
     rn.add_argument("--variants", type=int, default=3)
     rn.add_argument("--caption")
     rn.add_argument("--seconds", type=float, default=30.0)
+    rn.add_argument("--talk", action="store_true")
+    tr = sub.add_parser("transcribe", help="show what the speech model hears")
+    tr.add_argument("file")
     sub.add_parser("renders", help="list recent renders")
     sub.add_parser("quiz", help="voice quiz")
     sub.add_parser("voice", help="show your voice profile")
@@ -403,7 +434,9 @@ def main(argv: list[str] | None = None) -> int:
             return _cmd_render(settings, None, 3, None, 30.0)
         if args.command == "render":
             return _cmd_render(settings, args.file, max(0, min(args.variants, 5)),
-                               args.caption, args.seconds)
+                               args.caption, args.seconds, args.talk)
+        if args.command == "transcribe":
+            return _cmd_transcribe(settings, args.file)
         if args.command == "renders":
             return _cmd_renders(settings)
         if args.command == "quiz":

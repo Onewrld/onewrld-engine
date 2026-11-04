@@ -53,6 +53,16 @@ def check_email(settings: Settings) -> CheckResult:
     return CheckResult("email", WARN, "not set up; alerts won't be emailed (RUNBOOK section 9)")
 
 
+def check_speech() -> CheckResult:
+    from onewrld import speech
+    if speech.speech_available():
+        return CheckResult("speech", PASS, "speech model installed")
+    if sys.version_info >= (3, 15):
+        return CheckResult("speech", WARN, f"not installable on Python {sys.version.split()[0]} yet; "
+                                            "see RUNBOOK section 14")
+    return CheckResult("speech", WARN, 'optional, not installed: pip install -e ".[speech]"')
+
+
 def check_ffmpeg() -> CheckResult:
     path = shutil.which("ffmpeg")
     if path:
@@ -98,6 +108,7 @@ def run_all(settings: Settings) -> list[CheckResult]:
         check_alert_email(settings),
         check_email(settings),
         check_ffmpeg(),
+        check_speech(),
         check_disk(settings),
         check_database(settings),
     ]

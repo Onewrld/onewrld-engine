@@ -30,6 +30,7 @@ Content, distribution, attribution and paid-ads system for ONEWRLD.
 | `assets/fonts/` | Assistant font (open license). |
 | `src/onewrld/overlays.py` | Draws caption text, logo watermark and end card; defines the safe zone. |
 | `src/onewrld/studio.py` | Renders a clip to a finished 9:16 video; variants; quality gate. |
+| `src/onewrld/speech.py` | Speech model (optional): word timings, dead-air cuts, word-by-word captions, .srt files. |
 | `src/onewrld/videos.py` | Connects the studio to the database and job queue; uses your approved captions. |
 | `src/onewrld/handlers/` | The code for each kind of job (demo jobs for now). |
 | `src/onewrld/cli.py` | The commands you type. |

@@ -172,3 +172,39 @@ Needs ffmpeg (section 0, step 3). Check with `python -m onewrld health`: the ffm
 Finished videos go in the `renders` folder inside the project. Open it with: `explorer renders`.
 **Tip:** drag a video file onto the PowerShell window to paste its full path.
 Rendering takes about 10 to 40 seconds per version, depending on clip length and your PC.
+
+## 14. Speech: word-by-word captions and dead-air cuts (optional)
+**Step 1: check your Python version**
+```
+python --version
+```
+- **3.11, 3.12, 3.13 or 3.14:** go to step 3.
+- **3.15:** the speech model's parts (`onnxruntime`) don't support 3.15 yet. Do step 2 first.
+
+**Step 2 (only if you're on 3.15): add Python 3.13 next to it.** About 10 minutes, one time. Your 3.15 stays installed.
+```
+winget install Python.Python.3.13
+```
+Close PowerShell, open a new one, go to the project, and rebuild its environment on 3.13:
+```
+cd onewrld
+Remove-Item -Recurse -Force .venv
+py -3.13 -m venv .venv
+.venv\Scripts\activate
+pip install -e ".[dev]"
+python -m onewrld health
+```
+Your `.env`, database, captions and renders are untouched; only the project's private Python folder is rebuilt.
+
+**Step 3: install the speech model**
+```
+pip install -e ".[speech]"
+python -m onewrld health
+```
+The `speech` line should say OK. The first transcription downloads the model (about 480 MB, once).
+
+**Use it**
+| Command | What it does |
+|---|---|
+| `python -m onewrld transcribe "clip.mp4"` | Prints the words it heard, how long it took, and how much is left after cutting pauses. Good first test. |
+| `python -m onewrld render "clip.mp4" --talk` | Talking clip: captions follow your words one at a time (current word white, others gray), pauses over 0.6 s are cut, and a `.srt` subtitle file is saved next to each video. |

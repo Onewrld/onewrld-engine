@@ -126,3 +126,12 @@ def test_render_job_through_queue_records_result(db_settings, conn, clip, monkey
     assert len(rows) == 2 and all(r["qc_passed"] for r in rows)
     assert all(r["caption_id"] == cid for r in rows)
     assert all(str(db_settings.root) in r["output_path"] for r in rows)
+
+
+def test_two_pass_loudness_uses_measured_values(tmp_path):
+    measured = {"input_i": "-23.1", "input_tp": "-6.0", "input_lra": "4.2",
+                "input_thresh": "-33.5", "target_offset": "0.3"}
+    cmd = studio.build_command(tmp_path / "in.mp4", {"duration": 10.0, "has_audio": True},
+                               studio.RenderSpec(), tmp_path / "o.mp4", tmp_path, loudness=measured)
+    fc = cmd[cmd.index("-filter_complex") + 1]
+    assert "volume=9.10dB" in fc and "alimiter=limit=0.84" in fc  # -14 - (-23.1) = +9.1 dB

@@ -53,13 +53,16 @@ def approved_captions(conn: psycopg.Connection, limit: int = 10) -> list[dict]:
 
 
 def plan(conn: psycopg.Connection, asset: dict, variants: int,
-         caption_text: str | None = None, max_seconds: float = 30.0) -> list[int]:
-    """Queue the main render + variants. Returns job ids (existing ones are reused)."""
+         caption_text: str | None = None, max_seconds: float = 30.0,
+         talk: bool = False) -> list[int]:
+    """Queue the main render + variants. Returns job ids (existing ones are reused).
+    talk=True: a talking clip. On-screen captions follow the speech word by word and pauses
+    are cut; the chosen caption is kept as the post's text."""
     if caption_text:
         caps = [{"id": None, "text": caption_text}]
     else:
         caps = approved_captions(conn) or [{"id": None, "text": ""}]
-    base = studio.RenderSpec(max_seconds=max_seconds)
+    base = studio.RenderSpec(max_seconds=max_seconds, speech_captions=talk, cut_silence=talk)
     specs = studio.variant_specs(base, [c["text"] for c in caps], variants, asset["duration"])
     job_ids = []
     for i, spec in enumerate(specs):

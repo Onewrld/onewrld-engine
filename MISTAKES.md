@@ -53,3 +53,8 @@ Every failure gets: what happened · root cause · fix · regression test that p
 - **Root cause:** The render command ran the general worker with a budget of 4 jobs. An old leftover job sitting in the queue (from an earlier kill-switch drill) used up one of the 4 slots, so the last render never ran. This would also happen on the owner's PC if old jobs were waiting.
 - **Fix:** The worker accepts `only_ids`, and `render` only processes the jobs it just queued. Other queued jobs are left untouched.
 - **Test:** `test_worker_only_ids_ignores_unrelated_jobs`.
+
+## M-009 (2026-11-04): Talking clips came out 3 to 4 dB too quiet (quality gate caught it)
+- **Root cause:** Single-pass `loudnorm`, and its two-pass "linear" mode, won't add gain when the voice's peaks would exceed the -1.5 dB ceiling. Spoken audio is peaky (about 19 dB between peaks and average), so it stalled around -17.4 LUFS. Test tones (3.1) didn't expose this.
+- **Fix:** Voice cleanup (high-pass and 4:1 compression), then measured gain plus a peak limiter (D-046). The quality gate's loudness check is what caught it before any output was used.
+- **Test:** `test_talking_clip_renders_with_cuts_and_word_captions` (real synthesized speech must pass the loudness check), `test_two_pass_loudness_uses_measured_values`.

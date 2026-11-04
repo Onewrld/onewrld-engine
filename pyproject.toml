@@ -15,6 +15,8 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]
+# Optional: speech captions and dead-air cuts (Phase 3.2). Needs Python 3.11 to 3.14.
+speech = ["faster-whisper>=1.1"]
 
 [project.scripts]
 onewrld = "onewrld.cli:main"
@@ -24,3 +26,4 @@ where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+pythonpath = ["tests"]  # lets tests import small helpers such as spoken_clip.py
