@@ -36,6 +36,7 @@ No cringe slang, no emoji spam, no fake urgency. Reads like a serious person wro
 - Tests never read or write anything outside their own throwaway schema or temp folder (M-004, M-005).
 - Prefer Python's built-in modules. A new package needs a ready-made Windows wheel for the owner's Python version, or it doesn't go in (M-006).
 - When something fails on the owner's PC, ask for `python -m onewrld diagnose` output before guessing.
+- No new output type becomes a default until the owner has seen a real example and approved the look (M-011). Passing the technical quality gate is not the same as looking good.
 - No unbounded loops, spend, or posting. Jobs must be idempotent (running twice never double-posts).
 - No scraping, browser bots, fake engagement, or hidden-ownership accounts.
 

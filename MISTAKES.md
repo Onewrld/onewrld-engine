@@ -63,3 +63,9 @@ Every failure gets: what happened · root cause · fix · regression test that p
 - **Root cause:** Variant recipes were designed for video. On ONEWRLD's black/white products, the "black and white" variant changes nothing visible.
 - **Caught by:** the new similarity check, on its first test run (0 of 64 bits different). Nothing had shipped.
 - **Fix:** Photo-specific framing recipes (D-050). Test: `test_batch_renders_products_and_inbox_with_matching_captions` asserts the similarity report is empty.
+
+## M-011 (2026-11-05): Photo-to-video posts were "the worst videos I've ever seen" (owner)
+- **What happened:** 4B.1 turned store product photos into slow-zoom videos with a caption, logo and end card, and no sound. The owner rejected them outright.
+- **Root cause (my judgment call, not a bug):** I had already flagged still-photo videos as the weakest content type (D-048), then built them anyway to have *something* before the shoot. A static product image, a slow zoom, text and silence reads as a cheap slideshow: below a premium brand, and the kind of low-effort content platforms push down. I also only ever reviewed output on test patterns and stand-in shapes, never on real ONEWRLD footage, so I couldn't judge quality.
+- **Fix:** Photo-to-video is OFF by default (`batch --photos` to opt in). The engine now only processes real video clips.
+- **Rule added:** No output type ships as default until the owner has seen a real example and approved the look. Quality bar is set by the owner's reference videos, not by passing technical checks.

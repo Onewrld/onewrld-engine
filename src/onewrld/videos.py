@@ -139,16 +139,19 @@ def inbox_dir(settings: Settings) -> Path:
     return settings.root / "media" / "inbox"
 
 
-def find_sources(settings: Settings) -> list[tuple[Path, str | None]]:
-    """(file, product handle or None). Product photos: media/products/<handle>/.
-    Your own clips and photos: media/inbox/ (or media/inbox/<handle>/ to tag a product)."""
+def find_sources(settings: Settings, include_photos: bool = False) -> list[tuple[Path, str | None]]:
+    """(file, product handle or None). Only real VIDEO clips by default: still photos made
+    into videos looked cheap (owner verdict, M-011), so they're opt-in only.
+    Clips go in media/inbox/ (or media/inbox/<handle>/ to tag a product)."""
     from onewrld import products
     out = []
-    for root in (products.products_dir(settings), inbox_dir(settings)):
+    roots = [inbox_dir(settings)] + ([products.products_dir(settings)] if include_photos else [])
+    exts = VIDEO_EXTS | (studio.IMAGE_EXTS if include_photos else set())
+    for root in roots:
         if not root.exists():
             continue
         for f in sorted(root.rglob("*")):
-            if f.is_file() and f.suffix.lower() in (studio.IMAGE_EXTS | VIDEO_EXTS):
+            if f.is_file() and f.suffix.lower() in exts:
                 handle = f.parent.name if f.parent != root else None
                 if handle and products.by_handle(handle) is None:
                     handle = None
@@ -156,9 +159,10 @@ def find_sources(settings: Settings) -> list[tuple[Path, str | None]]:
     return out
 
 
-def plan_batch(conn: psycopg.Connection, settings: Settings, variants: int = 3) -> dict:
+def plan_batch(conn: psycopg.Connection, settings: Settings, variants: int = 3,
+               include_photos: bool = False) -> dict:
     jobs, uncaptioned = [], []
-    for f, handle in find_sources(settings):
+    for f, handle in find_sources(settings, include_photos):
         asset = register_asset(conn, f)
         if not approved_captions(conn, limit=1, product=handle):
             uncaptioned.append(f"{handle or 'untagged'}/{f.name}")

@@ -136,10 +136,11 @@ def test_batch_renders_products_and_inbox_with_matching_captions(db_settings, co
     _approve(conn, "Heavy cotton sweats. Cut wide from the knee down.", SWEATS)
     _approve(conn, "Hoodie only line.", HOODIE)
 
-    sources = videos.find_sources(db_settings)
+    assert {p.name for p, _ in videos.find_sources(db_settings)} == {"old_reel.mp4"}  # photos off by default
+    sources = videos.find_sources(db_settings, include_photos=True)
     assert {(p.name, h) for p, h in sources} == {("1.png", SWEATS), ("1.png", HAT),
                                                  ("old_reel.mp4", None)}
-    plan = videos.plan_batch(conn, db_settings, variants=1)
+    plan = videos.plan_batch(conn, db_settings, variants=1, include_photos=True)
     assert len(plan["job_ids"]) == 6                     # 3 sources x (main + 1 variant)
     assert any(HAT in u for u in plan["uncaptioned"])    # hat has no approved caption yet
     stats = run_worker(db_settings, max_jobs=10, max_seconds=900, only_ids=plan["job_ids"])
@@ -154,7 +155,7 @@ def test_batch_renders_products_and_inbox_with_matching_captions(db_settings, co
             assert cap == ""                             # never a hoodie/sweats line on the hat
     assert videos.similarity_report(rows) == []
     # running the batch again reuses everything: same jobs, nothing new
-    assert videos.plan_batch(conn, db_settings, variants=1)["job_ids"] == plan["job_ids"]
+    assert videos.plan_batch(conn, db_settings, variants=1, include_photos=True)["job_ids"] == plan["job_ids"]
 
 
 @needs_ffmpeg

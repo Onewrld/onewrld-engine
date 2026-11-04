@@ -342,17 +342,17 @@ def _cmd_pull_products(settings) -> int:
     return 0
 
 
-def _cmd_batch(settings, variants: int) -> int:
+def _cmd_batch(settings, variants: int, include_photos: bool = False) -> int:
     from onewrld import db, studio, videos
     from onewrld.worker import run_worker
 
     studio.require_ffmpeg()
     videos.inbox_dir(settings).mkdir(parents=True, exist_ok=True)
     with db.connect(settings) as conn:
-        plan = videos.plan_batch(conn, settings, variants)
+        plan = videos.plan_batch(conn, settings, variants, include_photos)
     ids = plan["job_ids"]
     if not ids:
-        print("Nothing to render. Run `pull-products`, or put clips/photos in "
+        print("Nothing to render. Put your video clips in "
               f"{videos.inbox_dir(settings)}")
         return 0
     print(f"Rendering {len(ids)} video(s). Already-made ones are reused, so re-running is cheap.")
@@ -431,6 +431,7 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("pull-products", help="download in-stock product photos")
     bt = sub.add_parser("batch", help="render everything in media/products and media/inbox")
     bt.add_argument("--variants", type=int, default=3)
+    bt.add_argument("--photos", action="store_true", help="also turn still photos into videos (off by default)")
     sub.add_parser("quiz", help="voice quiz")
     sub.add_parser("voice", help="show your voice profile")
     cp = sub.add_parser("captions", help="caption bank: import, review, list, score")
@@ -497,7 +498,7 @@ def main(argv: list[str] | None = None) -> int:
         if args.command == "pull-products":
             return _cmd_pull_products(settings)
         if args.command == "batch":
-            return _cmd_batch(settings, max(0, min(args.variants, 5)))
+            return _cmd_batch(settings, max(0, min(args.variants, 5)), args.photos)
         if args.command == "quiz":
             return _cmd_quiz(settings)
         if args.command == "voice":
