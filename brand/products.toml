@@ -1,0 +1,50 @@
+# In-stock products the content engine makes videos for. Pulled from Shopify on 2026-11-04.
+# `collection` groups products that share captions (e.g. both Fall of Icarus pieces).
+# `images` are the public product photos on your store; `python -m onewrld pull-products`
+# downloads them to media/products/<handle>/.
+# Stock changes daily: the posting kit re-checks stock before anything states it.
+
+[[products]]
+handle = "onewrld-fall-of-icarus-zip-hoodie"
+title = "Fall of Icarus Zip Hoodie"
+collection = "fall_of_icarus"
+price = "49.99"
+facts = ["480 GSM 100% cotton", "ONEWRLD emblem embroidered on the chest",
+         "Fall of Icarus motif printed (DTG) across the back", "unconventional stitching"]
+images = [
+  "https://cdn.shopify.com/s/files/1/0804/5510/6845/files/IMG_1917_1.png?v=1777852309",
+  "https://cdn.shopify.com/s/files/1/0804/5510/6845/files/IMG_1916_1.png?v=1777852316",
+]
+
+[[products]]
+handle = "onewrld-fall-of-icarus-sweatpants"
+title = "Fall of Icarus Sweatpants"
+collection = "fall_of_icarus"
+price = "46.95"
+facts = ["heavy cotton", "wash darker in the folds", "wide and relaxed from the knee down",
+         "stacks over sneakers", "graphics printed DTG"]
+images = [
+  "https://cdn.shopify.com/s/files/1/0804/5510/6845/files/IMG_1919_1.png?v=1777852328",
+  "https://cdn.shopify.com/s/files/1/0804/5510/6845/files/IMG_1918_1.png?v=1777852338",
+]
+
+[[products]]
+handle = "onewrld-acid-wash-signature-hat"
+title = "Acid Wash Signature Hat"
+collection = "signature"
+price = "21.99"
+facts = ["custom acid wash, no two hats exactly the same", "raised stitched ONEWRLD embroidery",
+         "structured crown, curved brim", "adjustable back strap"]
+images = [
+  "https://cdn.shopify.com/s/files/1/0804/5510/6845/files/Photoroom_20260115_104322.jpg?v=1769818589",
+]
+
+[[products]]
+handle = "onewrld-shaker-cup"
+title = "Shaker Cup"
+collection = "signature"
+price = "7.99"
+facts = ["spring ball mixer", "leak-proof snap lid with screw cap", "hand wash"]
+images = [
+  "https://cdn.shopify.com/s/files/1/0804/5510/6845/files/QFBO3702_1.png?v=1736996554",
+]

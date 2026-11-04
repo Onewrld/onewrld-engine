@@ -42,8 +42,14 @@ def add_caption(conn: psycopg.Connection, text: str, *, pillar: str | None = Non
             (text.strip(), text_hash(text), pillar, product, source, fact_check,
              s.score, s.blocked, Jsonb(s.reasons), parent_id)).fetchone()
         if row is None:
-            existing = conn.execute("SELECT id FROM caption WHERE text_hash=%s",
-                                    (text_hash(text),)).fetchone()
+            # Already have this caption: keep its approval history, but refresh the
+            # labels (pillar, product, fact_check) from the file, which is the source of truth.
+            existing = conn.execute(
+                """UPDATE caption SET pillar = COALESCE(%s, pillar),
+                                      product = COALESCE(%s, product),
+                                      fact_check = %s
+                   WHERE text_hash = %s RETURNING id""",
+                (pillar, product, fact_check, text_hash(text))).fetchone()
             return existing["id"], False
         if s.passes:
             conn.execute(
@@ -59,7 +65,7 @@ def import_file(conn: psycopg.Connection, path: Path) -> dict[str, int]:
     stats = {"new": 0, "already_had": 0, "blocked": 0, "below_floor": 0, "to_review": 0}
     for item in data["captions"]:
         cid, created = add_caption(conn, item["text"], pillar=item.get("pillar"),
-                                   product=product, fact_check=bool(item.get("fact_check")))
+                                   product=item.get("product", product), fact_check=bool(item.get("fact_check")))
         if not created:
             stats["already_had"] += 1
             continue

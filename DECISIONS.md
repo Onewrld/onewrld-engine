@@ -194,3 +194,20 @@ Every decision is written as Decision / Why / What if. Newest at the bottom.
 
 ## D-047: Render fingerprints include a pipeline version
 - **Why:** Re-rendering the same clip reuses the old file (idempotency). When the pipeline itself improves, the version bump makes it render fresh.
+
+## D-048: Phase 4B starts with the content that already exists (owner, 2026-11-04)
+- **Decision:** 4B.1 makes videos from the store's product photos and from anything dropped in `media/inbox`, before the shoot. Talking-clip slicing (4B.2) builds on the shoot footage.
+- **Why:** The owner asked to build from the content he has now. Product photos give 4 videos per photo today (6 photos = 24 videos) at $0.
+- **What if:** Product photos are the weakest content type (static; real footage converts better). They fill the calendar while the shoot footage gets cut.
+
+## D-049: Captions are matched to products
+- **Decision:** Each caption carries a `product` tag: a product handle, `collection:<name>`, or `brand`. A video of a product only uses captions for that product, its collection, or brand-wide lines. Untagged footage can use any approved caption.
+- **Why:** A sweatpants line on a hat video is wrong content, and a customer would notice. Tags live in the caption files; re-importing refreshes the tags without touching approvals.
+
+## D-050: Photos get framing variants, not color variants
+- **Why:** ONEWRLD's products are black and white, so a black-and-white version of a product photo is identical to the original. The new similarity check caught this on its first run (M-010). Photo variants change framing instead: whole product, closer detail, tight detail, short and off-center. Photos also always drift slowly, so they never look frozen.
+- **Caption on photos:** sits under the product, with a soft dark band behind it for readability.
+
+## D-051: Near-duplicate check uses a perceptual "difference hash"
+- **What it is:** a 64-bit fingerprint of what a frame looks like. Similar images give similar fingerprints. Two versions of one source that differ by 5 bits or fewer AND share a caption are flagged.
+- **Why:** Platforms fingerprint footage the same way; we catch near-copies before they do. Built with Pillow, no new package.

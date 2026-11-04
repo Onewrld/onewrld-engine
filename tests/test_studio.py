@@ -135,3 +135,12 @@ def test_two_pass_loudness_uses_measured_values(tmp_path):
                                studio.RenderSpec(), tmp_path / "o.mp4", tmp_path, loudness=measured)
     fc = cmd[cmd.index("-filter_complex") + 1]
     assert "volume=9.10dB" in fc and "alimiter=limit=0.84" in fc  # -14 - (-23.1) = +9.1 dB
+
+
+def test_two_sentences_get_one_line_each(tmp_path):
+    from PIL import Image, ImageDraw
+    text = "Heavy cotton sweats. Cut wide from the knee down."
+    box = overlays.caption_png(text, tmp_path / "c.png")
+    assert overlays.SAFE.contains(box)
+    # two lines tall (one per sentence), not three
+    assert box.bottom - box.top < 64 * 1.25 * 2 + 1

@@ -34,6 +34,11 @@ Video Studio (Phase 3):
   transcribe FILE        show the words the speech model hears, and how long it took
   renders                list recent renders with quality-check results
 
+Volume Engine (Phase 4B):
+  pull-products          download your in-stock product photos from the store
+  batch                  turn every photo and clip in media/products + media/inbox into
+                         finished videos (main + variants), with product-matched captions
+
 Demos (nothing real is ever posted):
   demo-action            simulate one outward action directly
   demo-job "text"        queue a fake post job (run `worker` to process it)
@@ -329,6 +334,53 @@ def _cmd_transcribe(settings, file: str) -> int:
     return 0
 
 
+def _cmd_pull_products(settings) -> int:
+    from onewrld import products
+
+    paths = products.pull_images(settings)
+    print(f"{len(paths)} product photo(s) ready in {products.products_dir(settings)}")
+    return 0
+
+
+def _cmd_batch(settings, variants: int) -> int:
+    from onewrld import db, studio, videos
+    from onewrld.worker import run_worker
+
+    studio.require_ffmpeg()
+    videos.inbox_dir(settings).mkdir(parents=True, exist_ok=True)
+    with db.connect(settings) as conn:
+        plan = videos.plan_batch(conn, settings, variants)
+    ids = plan["job_ids"]
+    if not ids:
+        print("Nothing to render. Run `pull-products`, or put clips/photos in "
+              f"{videos.inbox_dir(settings)}")
+        return 0
+    print(f"Rendering {len(ids)} video(s). Already-made ones are reused, so re-running is cheap.")
+    run_worker(settings, max_jobs=len(ids), max_seconds=4 * 3600, only_ids=ids)
+    with db.connect(settings) as conn:
+        rows = conn.execute(
+            """SELECT r.* FROM render r JOIN job j ON j.idempotency_key = 'render:' || r.render_key
+               WHERE j.id = ANY(%s) ORDER BY r.id""", (ids,)).fetchall()
+        dead = conn.execute("SELECT id, last_error FROM job WHERE id = ANY(%s) AND status='dead'",
+                            (ids,)).fetchall()
+    passed = sum(1 for r in rows if r["qc_passed"])
+    print(f"\n{passed} of {len(ids)} videos passed the quality check.")
+    for d in dead:
+        print(f"  job #{d['id']} failed: {d['last_error'][:200]}")
+    issues = videos.similarity_report(rows)
+    print("Similarity check: " + ("no near-duplicates." if not issues else f"{len(issues)} near-duplicate pair(s):"))
+    for i in issues:
+        print("  " + i)
+    if plan["uncaptioned"]:
+        print(f"\n{len(plan['uncaptioned'])} file(s) have no approved caption for their product yet, "
+              "so they rendered without on-screen text:")
+        for u in plan["uncaptioned"][:10]:
+            print("  " + u)
+        print("Fix: python -m onewrld captions import   then   python -m onewrld captions review")
+    print(f"\nVideos are in: {videos.renders_dir(settings)}")
+    return 0 if passed == len(ids) and not dead else 1
+
+
 def _cmd_renders(settings) -> int:
     from onewrld import db, videos
 
@@ -376,6 +428,9 @@ def main(argv: list[str] | None = None) -> int:
     tr = sub.add_parser("transcribe", help="show what the speech model hears")
     tr.add_argument("file")
     sub.add_parser("renders", help="list recent renders")
+    sub.add_parser("pull-products", help="download in-stock product photos")
+    bt = sub.add_parser("batch", help="render everything in media/products and media/inbox")
+    bt.add_argument("--variants", type=int, default=3)
     sub.add_parser("quiz", help="voice quiz")
     sub.add_parser("voice", help="show your voice profile")
     cp = sub.add_parser("captions", help="caption bank: import, review, list, score")
@@ -439,6 +494,10 @@ def main(argv: list[str] | None = None) -> int:
             return _cmd_transcribe(settings, args.file)
         if args.command == "renders":
             return _cmd_renders(settings)
+        if args.command == "pull-products":
+            return _cmd_pull_products(settings)
+        if args.command == "batch":
+            return _cmd_batch(settings, max(0, min(args.variants, 5)))
         if args.command == "quiz":
             return _cmd_quiz(settings)
         if args.command == "voice":

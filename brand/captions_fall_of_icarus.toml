@@ -3,7 +3,7 @@
 # day it is posted (stock, sizes, where it ships from).
 # To add a caption: copy a [[captions]] block, change the text, run `captions import`.
 
-product = "onewrld-fall-of-icarus-zip-hoodie"
+product = "collection:fall_of_icarus"  # default for captions below without their own `product`
 
 # story
 [[captions]]
@@ -12,10 +12,12 @@ text = "Icarus fell because he tried. Most people never leave the ground."
 
 [[captions]]
 pillar = "story"
+product = "brand"
 text = "Nobody gave us a head start. We stopped waiting for one."
 
 [[captions]]
 pillar = "story"
+product = "brand"
 text = "They'll call it luck once it works. Let them."
 
 [[captions]]
@@ -40,19 +42,23 @@ text = "Fly anyway."
 
 [[captions]]
 pillar = "story"
+product = "brand"
 text = "Not for everyone. That's the point."
 
 # product
 [[captions]]
 pillar = "product"
+product = "onewrld-fall-of-icarus-zip-hoodie"
 text = "480 GSM cotton. You feel the weight the second you pick it up."
 
 [[captions]]
 pillar = "product"
+product = "onewrld-fall-of-icarus-zip-hoodie"
 text = "Fall of Icarus zip hoodie. Heavy cotton, made to last years, not a season."
 
 [[captions]]
 pillar = "product"
+product = "onewrld-fall-of-icarus-sweatpants"
 text = "The wash is different on every pair. Darker in the folds, lighter where it wears."
 
 [[captions]]
@@ -61,6 +67,7 @@ text = "Full set. Hoodie and sweats. Made to be lived in."
 
 [[captions]]
 pillar = "product"
+product = "onewrld-fall-of-icarus-zip-hoodie"
 text = "Heavy enough that you notice when you take it off."
 
 # proof (true facts only)
@@ -82,40 +89,49 @@ text = "Last few Fall of Icarus hoodies. Sizes are on the site."
 [[captions]]
 pillar = "proof"
 fact_check = true
+product = "brand"
 text = "Packed by hand. Shipped from Staten Island."
 
 # founder
 [[captions]]
 pillar = "founder"
+product = "brand"
 text = "I started ONEWRLD for people like me. No connections, no shortcuts, no plan B."
 
 [[captions]]
 pillar = "founder"
+product = "brand"
 text = "Two and a half years in. Still doing almost all of it myself."
 
 [[captions]]
 pillar = "founder"
+product = "brand"
 text = "I work a full-time job and build this at night. That's the brand."
 
 [[captions]]
 pillar = "founder"
+product = "brand"
 text = "Every order still goes through my hands."
 
 # gym
 [[captions]]
 pillar = "gym"
+product = "brand"
 text = "Discipline looks boring from the outside."
 
 [[captions]]
 pillar = "gym"
+product = "brand"
 text = "6am. Empty gym. Nobody watching. That's where it's built."
 
 [[captions]]
 pillar = "gym"
+product = "brand"
 text = "Wear it to train. Wear it everywhere after."
 
 [[captions]]
 pillar = "gym"
+product = "brand"
 text = "Nobody saw the hours. That was never the point."
 
 # deliberately borderline: tests where your line is

@@ -58,3 +58,8 @@ Every failure gets: what happened · root cause · fix · regression test that p
 - **Root cause:** Single-pass `loudnorm`, and its two-pass "linear" mode, won't add gain when the voice's peaks would exceed the -1.5 dB ceiling. Spoken audio is peaky (about 19 dB between peaks and average), so it stalled around -17.4 LUFS. Test tones (3.1) didn't expose this.
 - **Fix:** Voice cleanup (high-pass and 4:1 compression), then measured gain plus a peak limiter (D-046). The quality gate's loudness check is what caught it before any output was used.
 - **Test:** `test_talking_clip_renders_with_cuts_and_word_captions` (real synthesized speech must pass the loudness check), `test_two_pass_loudness_uses_measured_values`.
+
+## M-010 (2026-11-04): Black-and-white variants of product photos were near-copies
+- **Root cause:** Variant recipes were designed for video. On ONEWRLD's black/white products, the "black and white" variant changes nothing visible.
+- **Caught by:** the new similarity check, on its first test run (0 of 64 bits different). Nothing had shipped.
+- **Fix:** Photo-specific framing recipes (D-050). Test: `test_batch_renders_products_and_inbox_with_matching_captions` asserts the similarity report is empty.

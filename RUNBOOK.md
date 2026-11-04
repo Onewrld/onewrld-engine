@@ -209,3 +209,27 @@ The `speech` line should say OK. The first transcription downloads the model (ab
 |---|---|
 | `python -m onewrld transcribe "clip.mp4"` | Prints the words it heard, how long it took, and how much is left after cutting pauses. Good first test. |
 | `python -m onewrld render "clip.mp4" --talk` | Talking clip: captions follow your words one at a time (current word white, others gray), pauses over 0.6 s are cut, and a `.srt` subtitle file is saved next to each video. |
+
+## 15. Volume Engine: make videos from what you already have
+**One time (and whenever products change):**
+```
+python -m onewrld pull-products
+```
+This downloads your in-stock product photos into `media\products\`.
+
+**Add your own content:** put any clips or photos you already have (old Reels, gym footage, phone photos) into `media\inbox\`. Open it with: `explorer media\inbox`.
+To tag a clip with a product so it gets that product's captions, put it in a subfolder named after the product, e.g. `media\inbox\onewrld-fall-of-icarus-sweatpants\`.
+
+**Make everything:**
+```
+python -m onewrld batch
+```
+Every photo and clip becomes a main version + 3 variants, each with a caption you approved **for that product** (sweatpants lines never land on the hat). Then it checks that no two versions look like near-copies.
+Re-running is cheap: anything already made is reused; only new files render.
+
+**If it says some files have no approved caption:**
+```
+python -m onewrld captions import
+python -m onewrld captions review
+```
+Then run `batch` again.

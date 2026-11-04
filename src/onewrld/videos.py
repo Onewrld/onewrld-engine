@@ -31,7 +31,12 @@ def register_asset(conn: psycopg.Connection, path: Path) -> dict:
     path = path.resolve()
     if not path.exists():
         raise PermanentError(f"File not found: {path}")
-    info = studio.probe(path)
+    if path.suffix.lower() in studio.IMAGE_EXTS:
+        from PIL import Image
+        with Image.open(path) as im:
+            info = {"duration": 0.0, "width": im.width, "height": im.height, "has_audio": False}
+    else:
+        info = studio.probe(path)
     sha = studio.file_sha(path)
     row = conn.execute(
         """INSERT INTO asset (sha256, path, duration, width, height, has_audio)
@@ -43,27 +48,41 @@ def register_asset(conn: psycopg.Connection, path: Path) -> dict:
     return row
 
 
-def approved_captions(conn: psycopg.Connection, limit: int = 10) -> list[dict]:
-    """Approved captions, product ones first (they have the best approval rate, L-008)."""
+def approved_captions(conn: psycopg.Connection, limit: int = 10,
+                      product: str | None = None) -> list[dict]:
+    """Approved captions, product ones first (they have the best approval rate, L-008).
+    With `product`, only captions tagged for that product, its collection, or brand-wide."""
+    from onewrld import products
+    targets = products.caption_targets(product)
     return conn.execute(
         """SELECT c.id, c.text FROM approval a JOIN caption c ON c.id = a.item_id::bigint
            WHERE a.item_type='caption' AND a.status='approved' AND NOT c.blocked
-           ORDER BY (c.pillar = 'product') DESC, a.decided_at DESC LIMIT %s""",
-        (limit,)).fetchall()
+             AND (%s::text[] IS NULL OR c.product = ANY(%s::text[]))
+           ORDER BY (c.pillar = 'product') DESC, (c.product = %s) DESC, a.decided_at DESC
+           LIMIT %s""",
+        (targets, targets, product, limit)).fetchall()
+
+
+STILL_SECONDS = 7.0
 
 
 def plan(conn: psycopg.Connection, asset: dict, variants: int,
          caption_text: str | None = None, max_seconds: float = 30.0,
-         talk: bool = False) -> list[int]:
+         talk: bool = False, product: str | None = None) -> list[int]:
     """Queue the main render + variants. Returns job ids (existing ones are reused).
     talk=True: a talking clip. On-screen captions follow the speech word by word and pauses
     are cut; the chosen caption is kept as the post's text."""
     if caption_text:
         caps = [{"id": None, "text": caption_text}]
     else:
-        caps = approved_captions(conn) or [{"id": None, "text": ""}]
-    base = studio.RenderSpec(max_seconds=max_seconds, speech_captions=talk, cut_silence=talk)
-    specs = studio.variant_specs(base, [c["text"] for c in caps], variants, asset["duration"])
+        caps = approved_captions(conn, product=product) or [{"id": None, "text": ""}]
+    still = Path(asset["path"]).suffix.lower() in studio.IMAGE_EXTS
+    if still:
+        max_seconds = min(max_seconds, STILL_SECONDS)
+    base = studio.RenderSpec(max_seconds=max_seconds, speech_captions=talk, cut_silence=talk,
+                             fit="contain" if still else "fill")
+    src_seconds = max_seconds if still else asset["duration"]
+    specs = studio.variant_specs(base, [c["text"] for c in caps], variants, src_seconds)
     job_ids = []
     for i, spec in enumerate(specs):
         cap = caps[i % len(caps)]
@@ -109,3 +128,79 @@ def recent(conn: psycopg.Connection, limit: int = 20) -> list[dict]:
         """SELECT r.id, r.output_path, r.qc_passed, r.spec, r.qc, a.path AS source
            FROM render r JOIN asset a ON a.id = r.asset_id
            ORDER BY r.id DESC LIMIT %s""", (limit,)).fetchall()
+
+
+# --- batch: everything in media/products and media/inbox ------------------------------
+
+VIDEO_EXTS = {".mp4", ".mov", ".m4v", ".avi", ".mkv", ".webm"}
+
+
+def inbox_dir(settings: Settings) -> Path:
+    return settings.root / "media" / "inbox"
+
+
+def find_sources(settings: Settings) -> list[tuple[Path, str | None]]:
+    """(file, product handle or None). Product photos: media/products/<handle>/.
+    Your own clips and photos: media/inbox/ (or media/inbox/<handle>/ to tag a product)."""
+    from onewrld import products
+    out = []
+    for root in (products.products_dir(settings), inbox_dir(settings)):
+        if not root.exists():
+            continue
+        for f in sorted(root.rglob("*")):
+            if f.is_file() and f.suffix.lower() in (studio.IMAGE_EXTS | VIDEO_EXTS):
+                handle = f.parent.name if f.parent != root else None
+                if handle and products.by_handle(handle) is None:
+                    handle = None
+                out.append((f, handle))
+    return out
+
+
+def plan_batch(conn: psycopg.Connection, settings: Settings, variants: int = 3) -> dict:
+    jobs, uncaptioned = [], []
+    for f, handle in find_sources(settings):
+        asset = register_asset(conn, f)
+        if not approved_captions(conn, limit=1, product=handle):
+            uncaptioned.append(f"{handle or 'untagged'}/{f.name}")
+        jobs += plan(conn, asset, variants, product=handle)
+    return {"job_ids": jobs, "uncaptioned": uncaptioned}
+
+
+def visual_hash(video: Path, at: float = 0.4) -> int:
+    """64-bit "difference hash" of one frame: similar-looking frames give similar hashes.
+    Used to make sure two versions aren't near-copies of each other."""
+    import io
+    import subprocess
+    from PIL import Image
+    dur = studio.probe(video)["duration"]
+    png = subprocess.run(["ffmpeg", "-v", "error", "-ss", f"{dur * at:.2f}", "-i", str(video),
+                          "-frames:v", "1", "-f", "image2pipe", "-vcodec", "png", "-"],
+                         capture_output=True).stdout
+    img = Image.open(io.BytesIO(png)).convert("L").resize((9, 8))
+    px = list(img.getdata()) if not hasattr(img, "get_flattened_data") else list(img.get_flattened_data())
+    bits = 0
+    for row in range(8):
+        for col in range(8):
+            bits = (bits << 1) | (px[row * 9 + col] > px[row * 9 + col + 1])
+    return bits
+
+
+NEAR_DUPLICATE_BITS = 5  # hashes differing by 5 of 64 bits or fewer look nearly identical
+
+
+def similarity_report(rows: list[dict]) -> list[str]:
+    """Flag versions of the same source that look nearly identical AND share a caption."""
+    from itertools import combinations
+    by_asset: dict[int, list[dict]] = {}
+    for r in rows:
+        if r["qc_passed"]:
+            by_asset.setdefault(r["asset_id"], []).append(r)
+    issues = []
+    for group in by_asset.values():
+        hashes = {r["id"]: visual_hash(Path(r["output_path"])) for r in group}
+        for a, b in combinations(group, 2):
+            dist = bin(hashes[a["id"]] ^ hashes[b["id"]]).count("1")
+            if dist <= NEAR_DUPLICATE_BITS and a["spec"].get("caption") == b["spec"].get("caption"):
+                issues.append(f"{Path(a['output_path']).name} and {Path(b['output_path']).name} "
+                              f"look alike ({dist}/64 bits differ)")
+    return issues

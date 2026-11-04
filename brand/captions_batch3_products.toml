@@ -1,0 +1,86 @@
+# Caption bank: batch 3, product captions for every in-stock item. Written 2026-11-04.
+# Rules applied from your reviews: physical and concrete (L-007), no bragging (L-006),
+# exclusive but never rude (L-005), plain words, no emoji, no call to action.
+# `product` = which product this caption may appear on. "collection:fall_of_icarus" = either
+# Fall of Icarus piece. "brand" = anything ONEWRLD.
+
+# --- sweatpants ---
+[[captions]]
+pillar = "product"
+product = "onewrld-fall-of-icarus-sweatpants"
+text = "Heavy cotton sweats. Cut wide from the knee down."
+
+[[captions]]
+pillar = "product"
+product = "onewrld-fall-of-icarus-sweatpants"
+text = "The wash runs darker in the folds. Every pair wears in a little different."
+
+[[captions]]
+pillar = "product"
+product = "onewrld-fall-of-icarus-sweatpants"
+text = "Stacks over your sneakers. Still clean when you walk."
+
+[[captions]]
+pillar = "product"
+product = "onewrld-fall-of-icarus-sweatpants"
+text = "Fall of Icarus sweatpants. Heavy, soft, and already broken in."
+
+# --- hoodie ---
+[[captions]]
+pillar = "product"
+product = "onewrld-fall-of-icarus-zip-hoodie"
+text = "Embroidered on the chest. Printed across the back. Built to hold its shape."
+
+[[captions]]
+pillar = "product"
+product = "onewrld-fall-of-icarus-zip-hoodie"
+text = "A zip hoodie you feel before you see."
+
+# --- full set ---
+[[captions]]
+pillar = "product"
+product = "collection:fall_of_icarus"
+text = "Hoodie and sweats. Same weight, same wash, one set."
+
+# --- hat ---
+[[captions]]
+pillar = "product"
+product = "onewrld-acid-wash-signature-hat"
+text = "Acid washed by hand. No two come out the same."
+
+[[captions]]
+pillar = "product"
+product = "onewrld-acid-wash-signature-hat"
+text = "Raised stitching on the front. You can feel the logo."
+
+[[captions]]
+pillar = "product"
+product = "onewrld-acid-wash-signature-hat"
+text = "Worn in on day one. Structured crown, curved brim."
+
+[[captions]]
+pillar = "gym"
+product = "onewrld-acid-wash-signature-hat"
+text = "Made for training. Looks right after."
+
+# --- shaker cup ---
+[[captions]]
+pillar = "gym"
+product = "onewrld-shaker-cup"
+text = "Same cup, every session."
+
+[[captions]]
+pillar = "product"
+product = "onewrld-shaker-cup"
+text = "Spring ball mixer. Leak-proof lid. Nothing extra."
+
+# --- brand-wide (any product) ---
+[[captions]]
+pillar = "story"
+product = "brand"
+text = "Built slow. Built to last."
+
+[[captions]]
+pillar = "gym"
+product = "brand"
+text = "The work doesn't need an audience."

@@ -64,6 +64,11 @@ def _wrap(draw: ImageDraw.ImageDraw, text: str, font, max_width: int) -> list[st
 def _balanced_wrap(draw: ImageDraw.ImageDraw, text: str, font, max_width: int) -> list[str]:
     """Same number of lines as a plain wrap, but with lines as even as possible,
     so a caption never ends with one lonely word."""
+    # Prefer one sentence per line when every sentence fits (reads more naturally).
+    import re
+    sentences = [x for x in re.split(r"(?<=[.!?])\s+", text.strip()) if x]
+    if 1 < len(sentences) <= 3 and all(draw.textlength(x, font=font) <= max_width for x in sentences):
+        return sentences
     lines = _wrap(draw, text, font, max_width)
     if len(lines) < 2:
         return lines
@@ -80,21 +85,47 @@ def _balanced_wrap(draw: ImageDraw.ImageDraw, text: str, font, max_width: int) -
     return best
 
 
-def caption_png(text: str, out: Path, size: int = 64, center_y: int = 1180) -> Box:
+def caption_png(text: str, out: Path, size: int = 64, center_y: int = 1180,
+                band: bool = False) -> Box:
     """Full-frame transparent PNG with the caption centered in the safe zone.
     Shrinks the font until the text fits. Returns the text's bounding box."""
     img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     draw = ImageDraw.Draw(img)
     max_w = SAFE.right - SAFE.left - 40
-    for s in range(size, 30, -4):
-        font = _font(s)
-        lines = _balanced_wrap(draw, text, font, max_w)
+    import re
+    sentences = [x for x in re.split(r"(?<=[.!?])\s+", text.strip()) if x]
+    chosen = None
+    if 1 < len(sentences) <= 3:
+        # one sentence per line reads best; allow a slightly smaller font (down to 52) for it
+        for s in range(size, 51, -2):
+            font = _font(s)
+            if all(draw.textlength(x, font=font) <= max_w for x in sentences):
+                chosen = (s, font, sentences)
+                break
+    if chosen:
+        s, font, lines = chosen
         line_h = int(s * 1.25)
         block_h = line_h * len(lines)
-        if block_h <= (SAFE.bottom - SAFE.top) // 2:
-            break
+    else:
+        for s in range(size, 30, -4):
+            font = _font(s)
+            lines = _balanced_wrap(draw, text, font, max_w)
+            line_h = int(s * 1.25)
+            block_h = line_h * len(lines)
+            if block_h <= (SAFE.bottom - SAFE.top) // 2:
+                break
     top = max(SAFE.top, min(center_y - block_h // 2, SAFE.bottom - block_h))
     mid_x = (SAFE.left + SAFE.right) // 2
+    if band:
+        # soft dark band behind the text, so it stays readable over a product photo
+        widest = max(draw.textlength(ln, font=font) for ln in lines)
+        pad_x, pad_y = 36, 22
+        band_img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+        ImageDraw.Draw(band_img).rounded_rectangle(
+            (max(SAFE.left, int(mid_x - widest / 2 - pad_x)), top - pad_y,
+             min(SAFE.right, int(mid_x + widest / 2 + pad_x)), top + block_h + pad_y),
+            radius=18, fill=(0, 0, 0, 165))
+        img.alpha_composite(band_img)
     left_edge, right_edge = W, 0
     for i, ln in enumerate(lines):
         w = draw.textlength(ln, font=font)

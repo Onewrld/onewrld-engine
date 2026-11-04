@@ -4,7 +4,7 @@
 # Style from the voice quiz + approvals: plain statements, product facts, slightly
 # exclusive, no emoji, no call to action, no scarcity talk (sold-out proof is fine).
 
-product = "onewrld-fall-of-icarus-zip-hoodie"
+product = "collection:fall_of_icarus"  # default for captions below without their own `product`
 
 # meaning: pride before the fall, said plainly
 [[captions]]
@@ -41,23 +41,28 @@ text = "Confidence is earned every day. Arrogance thinks it's already paid in fu
 
 [[captions]]
 pillar = "story"
+product = "brand"
 text = "Quiet when it's going well. Same when it isn't."
 
 [[captions]]
 pillar = "story"
+product = "brand"
 text = "Built slow on purpose."
 
 # product (the quiz leaned product over story)
 [[captions]]
 pillar = "product"
+product = "onewrld-fall-of-icarus-zip-hoodie"
 text = "480 GSM. Embroidered chest. Fall of Icarus printed across the back."
 
 [[captions]]
 pillar = "product"
+product = "onewrld-fall-of-icarus-zip-hoodie"
 text = "The back carries the fall. The chest carries the name."
 
 [[captions]]
 pillar = "product"
+product = "onewrld-fall-of-icarus-zip-hoodie"
 text = "The stitching is unconventional on purpose. Look closer."
 
 [[captions]]
@@ -66,9 +71,11 @@ text = "Made heavy so it lasts. Made quiet so it doesn't have to explain itself.
 
 [[captions]]
 pillar = "product"
+product = "onewrld-fall-of-icarus-sweatpants"
 text = "Wide from the knee down. Stacks over your sneakers without looking sloppy."
 
 # proof (sold-out history is fine; no scarcity pressure)
 [[captions]]
 pillar = "gym"
+product = "brand"
 text = "For people who don't post the work."

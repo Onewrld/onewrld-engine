@@ -31,8 +31,11 @@ log = get_logger(__name__)
 
 # Bump when the render pipeline changes in a way that changes the output (e.g. the audio
 # chain), so old cached renders aren't reused. 2 = Phase 3.2 voice cleanup + measured gain.
-RENDER_VERSION = 2
+RENDER_VERSION = 3  # 3 = photo framing variants, caption band, sentence line breaks
 FPS = 30
+STILL_BOX, STILL_TOP = 960, 260          # photo placement for fit="contain"
+STILL_CAPTION_Y = 1320                    # caption sits under the photo
+IMAGE_EXTS = {".png", ".jpg", ".jpeg", ".webp"}
 END_CARD_SECONDS = 1.5
 TARGET_LUFS = -14.0
 MIN_SECONDS, MAX_SECONDS = 3.0, 90.0
@@ -55,6 +58,8 @@ class RenderSpec:
     watermark: bool = True
     speech_captions: bool = False  # word-by-word captions from the speech (replaces `caption` on screen)
     cut_silence: bool = False      # cut pauses longer than speech.MAX_GAP
+    fit: str = "fill"              # fill = crop to fill the frame (video); contain = whole
+                                   # picture on black with room for the caption (photos)
 
     def key(self, source_sha: str) -> str:
         blob = json.dumps({"src": source_sha, "v": RENDER_VERSION, **asdict(self)}, sort_keys=True)
@@ -101,6 +106,22 @@ def probe(path: Path) -> dict:
 def _video_chain(spec: RenderSpec, seconds: float) -> str:
     """ffmpeg filter text for the main clip's picture."""
     W, H = overlays.W, overlays.H
+    if spec.fit == "contain":
+        # whole picture, up to 960x960, placed in the upper safe area on black
+        parts = [f"scale={STILL_BOX}:{STILL_BOX}:force_original_aspect_ratio=decrease",
+                 f"pad={W}:{H}:(ow-iw)/2:{STILL_TOP}:black", f"fps={FPS}"]
+        # Photos always drift slowly (a still frame looks frozen). `zoom` sets the framing:
+        # 1.0 = whole product; higher = closer on the detail. The drift adds +4% over the clip.
+        # crop_x moves the focus left/right (0.5 = center).
+        frames = max(1, int(seconds * FPS))
+        cy = STILL_TOP + STILL_BOX // 2
+        parts.append(f"zoompan=z='{spec.zoom:.3f}+0.04*on/{frames}':"
+                     f"x='(iw-iw/zoom)*{spec.crop_x:.3f}':y='{cy}-({cy}/zoom)':"
+                     f"d=1:s={W}x{H}:fps={FPS}")
+        parts += [f"scale={W}:{H}", "setsar=1"]
+        if spec.look == "bw":
+            parts.append("hue=s=0,eq=contrast=1.08:brightness=-0.02")
+        return ",".join(parts)
     parts = [
         # fill the 9:16 frame, then cut out the 1080x1920 window at crop_x
         f"scale={W}:{H}:force_original_aspect_ratio=increase",
@@ -163,6 +184,21 @@ def measure_loudness(src: Path, spec: RenderSpec, dur: float, apre: str) -> dict
     return data
 
 
+def _caption_y(spec: RenderSpec) -> int:
+    return STILL_CAPTION_Y if spec.fit == "contain" else 1180
+
+
+def prepare_still(src: Path, workdir: Path) -> Path:
+    """Flatten a photo onto black (removes transparency) and save it as a plain image."""
+    from PIL import Image
+    img = Image.open(src).convert("RGBA")
+    bg = Image.new("RGBA", img.size, (0, 0, 0, 255))
+    bg.alpha_composite(img)
+    out = workdir / "still.png"
+    bg.convert("RGB").save(out)
+    return out
+
+
 def build_command(src: Path, src_info: dict, spec: RenderSpec, out: Path, workdir: Path,
                   words: list | None = None, loudness: dict | None = None) -> list[str]:
     """Build (but don't run) the ffmpeg command. Kept separate so tests can inspect it.
@@ -176,8 +212,12 @@ def build_command(src: Path, src_info: dict, spec: RenderSpec, out: Path, workdi
             raise PermanentError("speech features need a transcript (words)")
         segments, cap_words = plan_speech(words, spec, dur)
     out_dur = sum(e - s for s, e in segments) if segments else dur
-    cmd = ["ffmpeg", "-y", "-v", "error", "-ss", f"{spec.start:.3f}", "-t", f"{dur:.3f}",
-           "-i", str(src)]
+    if src_info.get("still"):
+        cmd = ["ffmpeg", "-y", "-v", "error", "-loop", "1", "-framerate", str(FPS),
+               "-t", f"{dur:.3f}", "-i", str(src_info["still"])]
+    else:
+        cmd = ["ffmpeg", "-y", "-v", "error", "-ss", f"{spec.start:.3f}", "-t", f"{dur:.3f}",
+               "-i", str(src)]
     inputs = 1
     overlay_inputs = []
     if spec.watermark:
@@ -188,7 +228,8 @@ def build_command(src: Path, src_info: dict, spec: RenderSpec, out: Path, workdi
         inputs += 1
     if spec.caption and not spec.speech_captions:
         cap = workdir / "caption.png"
-        overlays.caption_png(spec.caption, cap)
+        overlays.caption_png(spec.caption, cap, center_y=_caption_y(spec),
+                             band=spec.fit == "contain")
         cmd += ["-loop", "1", "-t", f"{dur:.3f}", "-i", str(cap)]
         overlay_inputs.append(inputs)
         inputs += 1
@@ -278,7 +319,14 @@ def render(src: Path, spec: RenderSpec, out_dir: Path, words_provider=None) -> d
     words_provider(src, sha) -> list[speech.Word] is used for speech features; by default it
     transcribes with faster-whisper (cached under out_dir/.transcripts)."""
     require_ffmpeg()
-    src_info = probe(src)
+    if src.suffix.lower() in IMAGE_EXTS:
+        if spec.speech_captions or spec.cut_silence:
+            raise PermanentError("speech features need a video with sound, not a photo")
+        if spec.fit != "contain":
+            spec = replace(spec, fit="contain")
+        src_info = {"duration": spec.max_seconds, "has_audio": False, "still": None}
+    else:
+        src_info = probe(src)
     if src_info["duration"] - spec.start < MIN_SECONDS:
         raise PermanentError(f"{src.name} is too short to cut from ({src_info['duration']:.1f}s)")
     sha = file_sha(src)
@@ -295,7 +343,10 @@ def render(src: Path, spec: RenderSpec, out_dir: Path, words_provider=None) -> d
     out = out_dir / f"{src.stem}_{key}.mp4"
     work = out_dir / f".work_{key}"
     work.mkdir(exist_ok=True)
-    caption_box = (overlays.caption_png(spec.caption, work / "caption_check.png")
+    if "still" in src_info:
+        src_info["still"] = prepare_still(src, work)
+    caption_box = (overlays.caption_png(spec.caption, work / "caption_check.png",
+                                        center_y=_caption_y(spec))
                    if spec.caption and not spec.speech_captions else None)
     if not out.exists():
         loud = None
@@ -325,10 +376,23 @@ def render(src: Path, spec: RenderSpec, out_dir: Path, words_provider=None) -> d
 
 def variant_specs(base: RenderSpec, captions: list[str], n: int, src_seconds: float) -> list[RenderSpec]:
     """The main version plus up to n distinct variants. Each changes several things at once
-    (look, crop, zoom, length, caption) so they are not near-copies of each other."""
+    (look, crop, zoom, length, caption) so they are not near-copies of each other.
+    Photos use framing recipes instead: ONEWRLD's products are black and white, so a
+    black-and-white version of a product photo looks identical (caught by the similarity
+    check, see M-010)."""
     caps = captions or [base.caption]
     pick = lambda i: caps[i % len(caps)]
     short = max(MIN_SECONDS + 1, min(base.max_seconds, src_seconds) * 0.6)
+    if base.fit == "contain":
+        recipes = [
+            dict(),                                         # whole product
+            dict(zoom=1.35),                                # closer on the detail
+            dict(zoom=1.8, crop_x=0.5, look="bw"),          # tight detail crop
+            dict(zoom=1.2, crop_x=0.3, max_seconds=short),  # short, off-center
+            dict(zoom=1.6, crop_x=0.7),
+            dict(zoom=2.2, look="bw"),
+        ]
+        return [replace(base, caption=pick(i), **r) for i, r in enumerate(recipes[: n + 1])]
     recipes = [
         dict(),                                                  # main
         dict(look="bw"),
