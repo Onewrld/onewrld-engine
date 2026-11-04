@@ -266,7 +266,7 @@ def _print_renders(rows) -> None:
                ([f"crop {sp['crop_x']}"] if sp["crop_x"] != 0.5 else [])
         print(f"  [{tag}] {Path(r['output_path']).name}  ({', '.join(bits)})")
         if sp.get("caption"):
-            print(f"         caption: {sp['caption'][:70]}")
+            print(f"         caption: {sp['caption']}")
         if not r["qc_passed"] and r["qc"]:
             bad = [k for k, ok in r["qc"]["checks"].items() if not ok]
             print(f"         failed: {', '.join(bad)}")
