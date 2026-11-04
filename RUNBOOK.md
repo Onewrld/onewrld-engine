@@ -182,13 +182,14 @@ python --version
 - **3.15:** the speech model's parts (`onnxruntime`) don't support 3.15 yet. Do step 2 first.
 
 **Step 2 (only if you're on 3.15): add Python 3.13 next to it.** About 10 minutes, one time. Your 3.15 stays installed.
+This also moves the project into its own private Python folder (`.venv`), which `health` now checks for (the `environment` line).
 ```
 winget install Python.Python.3.13
 ```
 Close PowerShell, open a new one, go to the project, and rebuild its environment on 3.13:
 ```
 cd onewrld
-Remove-Item -Recurse -Force .venv
+Remove-Item -Recurse -Force .venv -ErrorAction SilentlyContinue
 py -3.13 -m venv .venv
 .venv\Scripts\activate
 pip install -e ".[dev]"

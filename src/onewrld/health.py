@@ -29,6 +29,16 @@ def check_python() -> CheckResult:
     return CheckResult("python", PASS if ok else FAIL, sys.version.split()[0])
 
 
+def check_venv() -> CheckResult:
+    """The project should run inside its own private Python folder (.venv), so its packages
+    never mix with anything else on the PC. sys.prefix differs from sys.base_prefix only
+    inside a virtual environment."""
+    if sys.prefix != sys.base_prefix:
+        return CheckResult("environment", PASS, "project .venv is active")
+    return CheckResult("environment", WARN, "not using the project's .venv; run "
+                                             ".venv\\Scripts\\activate (RUNBOOK section 1)")
+
+
 def check_mode(settings: Settings) -> CheckResult:
     if settings.mode == "live":
         return CheckResult("mode", WARN, "LIVE: real posting/spending is allowed")
@@ -103,6 +113,7 @@ def check_database(settings: Settings) -> CheckResult:
 def run_all(settings: Settings) -> list[CheckResult]:
     return [
         check_python(),
+        check_venv(),
         check_mode(settings),
         check_kill_switch(settings),
         check_alert_email(settings),

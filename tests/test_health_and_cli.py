@@ -27,3 +27,12 @@ def test_cli_kill_blocks_demo_action(tmp_path, monkeypatch, capsys):
     assert "Blocked" in capsys.readouterr().out
     assert main(["resume", "test over"]) == 0
     assert main(["demo-action"]) == 0
+
+
+def test_venv_check_reports_both_states(monkeypatch):
+    import sys
+    monkeypatch.setattr(sys, "prefix", "/x/.venv")
+    monkeypatch.setattr(sys, "base_prefix", "/usr")
+    assert health.check_venv().status == health.PASS
+    monkeypatch.setattr(sys, "prefix", "/usr")
+    assert health.check_venv().status == health.WARN
