@@ -9,7 +9,7 @@ _Last updated: 2026-11-05_
 | Done | Phase 0 plan. Module 1.1 (skeleton and safety). Module 1.2 (database, job queue, worker, alerts, database kill switch). Module 1.3 (email alerts with caps, log rotation, `phase1-check`; 43 tests pass) |
 | Current | 5.1 built: schedule → review → daily kit → mark posted. Owner: migrate, put real clips in media/inbox, batch, schedule |
 | Next | 5.2: automatic posting adapter (posting service + Meta direct), cost approval first. 4B.2 talking-clip atomizer after the shoot and the Python 3.13 fix |
-| Blockers | None |
+| Blockers | **Checkout converts 1 in ~19** (store audit 2026-11-05): fix shipping surprise, turn on abandoned-checkout emails, check wallets, phone test purchase. Highest-value fix in the business right now |
 
 ## Phase checklist
 - [x] Phase 0: Plan and feasibility
