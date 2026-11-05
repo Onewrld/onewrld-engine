@@ -211,3 +211,23 @@ Every decision is written as Decision / Why / What if. Newest at the bottom.
 ## D-051: Near-duplicate check uses a perceptual "difference hash"
 - **What it is:** a 64-bit fingerprint of what a frame looks like. Similar images give similar fingerprints. Two versions of one source that differ by 5 bits or fewer AND share a caption are flagged.
 - **Why:** Platforms fingerprint footage the same way; we catch near-copies before they do. Built with Pillow, no new package.
+
+## D-052: Phase 5 starts with a manual posting kit behind an adapter interface
+- **Decision:** 5.1 schedules, captions, links and approves posts, then exports a daily kit for posting by hand. Automatic posting comes in 5.2 as an "adapter", a small plug-in with one job: publish a post.
+- **Why:** Posting by hand from a ready kit takes about 2 minutes per post and works today, with no accounts to connect and no monthly fee. The posting-service decision (cost, TikTok and YouTube approval) gets made with real posts running. All automatic adapters go through `safety.outward_action`, so the kill switch and dry-run cover every real post.
+- **What if:** If posting by hand is too slow, approve the posting-service cost and 5.2 switches the adapter. Nothing else changes.
+
+## D-053: Scheduling rules
+- 1 post a day per platform to start (D-031), at times from `platforms.toml`.
+- The same footage at most once a week per platform; each platform gets a different version of a clip where one exists.
+- The least recently used footage goes first, so everything gets rotated.
+- Missed posts expire after a day instead of piling up.
+- **Post times are starting guesses, not proven:** TikTok 7pm, Instagram 12pm, X 12:30pm, Facebook 1pm, YouTube 3pm (Eastern). Phase 6 replaces them with what ONEWRLD's own data shows.
+
+## D-054: Links
+- **Tappable links** (YouTube, Facebook, X): every post carries its own tracked link (UTM tags: source = platform, campaign = collection, content = post number) to the matching product page.
+- **Instagram and TikTok:** no link in the caption (it can't be tapped there, and your quiz said no calls to action). A tracked bio link per app instead (RUNBOOK 16).
+- Shopify keeps the UTM tags on each order's landing page, so Phase 4 can match orders to posts and platforms.
+
+## D-055: `tzdata` added as a dependency
+- **Why:** Windows has no built-in time-zone database, so scheduling in Eastern time would fail on the owner's PC. `tzdata` is pure Python with ready-made installs for every version (rule M-006 satisfied).

@@ -8,6 +8,7 @@ state/
 logs/
 media/
 renders/
+posting_kit/
 
 # Python
 __pycache__/

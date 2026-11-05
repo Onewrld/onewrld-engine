@@ -1,0 +1,65 @@
+# Where and how ONEWRLD posts. The scheduler follows these limits; the learning loop
+# (Phase 6) will tune post times and caps from real results.
+#
+# daily_cap        max posts per day on this account (D-031: start low, raise while reach holds)
+# post_times       starting guesses, US Eastern time, 24h clock. NOT proven: replaced by
+#                  what your own data shows once there is enough of it.
+# link_clickable   whether a link in the caption can be tapped (Instagram/TikTok: no, so the
+#                  store link lives in the profile bio instead)
+# caption_max      platform text limit in characters
+# hashtags_max     how many hashtags to add (your quiz: hashtags OK, keep them few)
+
+timezone = "America/New_York"
+store_url = "https://onewrld.us"
+brand_hashtag = "#onewrld"
+
+[[platforms]]
+id = "tiktok"
+name = "TikTok"
+handle = "@onewrld.US"
+daily_cap = 1
+post_times = ["19:00"]
+link_clickable = false
+caption_max = 2200
+hashtags_max = 3
+
+[[platforms]]
+id = "instagram"
+name = "Instagram Reels"
+handle = "@onewrld.us"
+daily_cap = 1
+post_times = ["12:00"]
+link_clickable = false
+caption_max = 2200
+hashtags_max = 3
+
+[[platforms]]
+id = "youtube"
+name = "YouTube Shorts"
+handle = "@onewrldus"
+daily_cap = 1
+post_times = ["15:00"]
+link_clickable = true
+caption_max = 5000
+title_max = 100
+hashtags_max = 2
+
+[[platforms]]
+id = "facebook"
+name = "Facebook Reels"
+handle = "ONEWRLD"
+daily_cap = 1
+post_times = ["13:00"]
+link_clickable = true
+caption_max = 2200
+hashtags_max = 2
+
+[[platforms]]
+id = "x"
+name = "X"
+handle = "@onewrldus"
+daily_cap = 1
+post_times = ["12:30"]
+link_clickable = true
+caption_max = 280
+hashtags_max = 1

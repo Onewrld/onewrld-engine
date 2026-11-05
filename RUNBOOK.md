@@ -233,3 +233,28 @@ python -m onewrld captions import
 python -m onewrld captions review
 ```
 Then run `batch` again.
+
+## 16. Posting: schedule, approve, post (Distribution, Phase 5.1)
+**Once a week (about 5 minutes):**
+```
+python -m onewrld schedule
+python -m onewrld posts review
+```
+`schedule` fills the next 7 days: 1 post a day per platform (TikTok, Instagram, YouTube Shorts, Facebook, X), never the same clip twice on one platform in a week, and a different version of a clip on each platform. `posts review` shows each post: `a` approve, `r` reject (say why), `A` approve everything left, `q` stop.
+
+**Each day:**
+```
+python -m onewrld kit
+```
+This makes a folder for today, with one subfolder per post in posting order: `video.mp4` plus `caption.txt` (and `title.txt` for YouTube). Upload, paste, then:
+```
+python -m onewrld posted 12
+```
+(12 = the post number shown in the kit). Optionally add the post's link: `--url https://...`
+`python -m onewrld posts` shows the week at a glance.
+
+**One-time: tracked bio links.** Instagram and TikTok captions can't hold tappable links, so set your profile link to a tracked one, so Shopify knows which app a visitor came from:
+- Instagram bio: `https://onewrld.us/?utm_source=instagram&utm_medium=bio`
+- TikTok bio: `https://onewrld.us/?utm_source=tiktok&utm_medium=bio`
+
+**Change post times or daily limits:** edit `brand/platforms.toml` (for example `daily_cap = 2`), then run `schedule` again.

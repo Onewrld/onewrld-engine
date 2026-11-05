@@ -33,6 +33,9 @@ Content, distribution, attribution and paid-ads system for ONEWRLD.
 | `src/onewrld/speech.py` | Speech model (optional): word timings, dead-air cuts, word-by-word captions, .srt files. |
 | `brand/products.toml` | In-stock products: facts, collection, photo links. |
 | `src/onewrld/products.py` | Product catalog and photo downloads. |
+| `brand/platforms.toml` | Each platform: handle, daily cap, post times, caption and link rules. |
+| `src/onewrld/distribution.py` | Scheduler, per-platform captions, tracked links, post review, daily posting kit. |
+| `src/onewrld/adapters.py` | Publishing plug-ins: manual kit today, automatic posting later; all real posts go through the safety gate. |
 | `src/onewrld/videos.py` | Connects the studio to the database and job queue; uses your approved captions. |
 | `src/onewrld/handlers/` | The code for each kind of job (demo jobs for now). |
 | `src/onewrld/cli.py` | The commands you type. |

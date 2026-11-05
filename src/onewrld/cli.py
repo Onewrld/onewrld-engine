@@ -39,6 +39,12 @@ Volume Engine (Phase 4B):
   batch                  turn every photo and clip in media/products + media/inbox into
                          finished videos (main + variants), with product-matched captions
 
+Distribution (Phase 5):
+  schedule               plan the next 7 days of posts across all platforms (--days N)
+  posts                  list upcoming posts;  posts review  to approve them
+  kit                    export today's approved posts as a folder to post from (--date YYYY-MM-DD)
+  posted N               mark post N as posted (after you post it by hand)  --url optional
+
 Demos (nothing real is ever posted):
   demo-action            simulate one outward action directly
   demo-job "text"        queue a fake post job (run `worker` to process it)
@@ -381,6 +387,73 @@ def _cmd_batch(settings, variants: int, include_photos: bool = False) -> int:
     return 0 if passed == len(ids) and not dead else 1
 
 
+def _cmd_schedule(settings, days: int) -> int:
+    from datetime import datetime
+    from onewrld import db, distribution
+
+    with db.connect(settings) as conn:
+        distribution.expire_missed(conn)
+        today = datetime.now(distribution.tz()).date()
+        ids = distribution.schedule(conn, today, days)
+        n_ready = conn.execute("SELECT count(*) AS n FROM render WHERE qc_passed").fetchone()["n"]
+    print(f"Planned {len(ids)} new post(s) over the next {days} days "
+          f"(from {n_ready} finished videos).")
+    if not ids:
+        print("Nothing new to plan: every slot is filled, or there are no unused finished videos.")
+        print("Make more with `batch` or `render`, then run `schedule` again.")
+    else:
+        print("Next: python -m onewrld posts review")
+    return 0
+
+
+def _cmd_posts(settings, action: str) -> int:
+    from onewrld import db, distribution
+
+    with db.connect(settings) as conn:
+        if action == "review":
+            st = distribution.review(conn)
+            print(f"\nDone: {st['approved']} approved, {st['rejected']} rejected, {st['skipped']} skipped.")
+            return 0
+        rows = distribution.upcoming(conn)
+    if not rows:
+        print("No posts in the next 7 days. Run `schedule`.")
+    zone = distribution.tz()
+    day = None
+    for r in rows:
+        when = r["scheduled_at"].astimezone(zone)
+        if when.date() != day:
+            day = when.date()
+            print(f"\n{when:%A %b %d}")
+        first = r["caption_text"].splitlines()[0][:60]
+        print(f"  {when:%I:%M %p}  {r['platform']:<10} #{r['id']:<5} {r['status']:<9} {first}")
+    return 0
+
+
+def _cmd_kit(settings, day_text: str | None) -> int:
+    from datetime import date, datetime
+    from onewrld import db, distribution
+
+    day = date.fromisoformat(day_text) if day_text else datetime.now(distribution.tz()).date()
+    with db.connect(settings) as conn:
+        folder = distribution.export_kit(conn, settings, day)
+    if folder is None:
+        print(f"No approved posts for {day}. Run `schedule`, then `posts review`.")
+        return 0
+    print((folder / "README.txt").read_text(encoding="utf-8"))
+    print(f"Open it with:  explorer {folder}")
+    return 0
+
+
+def _cmd_posted(settings, post_id: int, url: str | None) -> int:
+    from onewrld import db, distribution
+
+    with db.connect(settings) as conn:
+        ok = distribution.mark_posted(conn, post_id, url)
+    print(f"Post {post_id} marked as posted." if ok else
+          f"Post {post_id} isn't approved (or doesn't exist). Check `posts`.")
+    return 0 if ok else 1
+
+
 def _cmd_renders(settings) -> int:
     from onewrld import db, videos
 
@@ -429,6 +502,15 @@ def main(argv: list[str] | None = None) -> int:
     tr.add_argument("file")
     sub.add_parser("renders", help="list recent renders")
     sub.add_parser("pull-products", help="download in-stock product photos")
+    sc = sub.add_parser("schedule", help="plan posts across platforms")
+    sc.add_argument("--days", type=int, default=7)
+    ps = sub.add_parser("posts", help="list upcoming posts, or `posts review`")
+    ps.add_argument("action", nargs="?", default="list", choices=["list", "review"])
+    kt = sub.add_parser("kit", help="export a day's approved posts to a folder")
+    kt.add_argument("--date")
+    pd = sub.add_parser("posted", help="mark a post as posted")
+    pd.add_argument("post_id", type=int)
+    pd.add_argument("--url")
     bt = sub.add_parser("batch", help="render everything in media/products and media/inbox")
     bt.add_argument("--variants", type=int, default=3)
     bt.add_argument("--photos", action="store_true", help="also turn still photos into videos (off by default)")
@@ -495,6 +577,14 @@ def main(argv: list[str] | None = None) -> int:
             return _cmd_transcribe(settings, args.file)
         if args.command == "renders":
             return _cmd_renders(settings)
+        if args.command == "schedule":
+            return _cmd_schedule(settings, max(1, min(args.days, 30)))
+        if args.command == "posts":
+            return _cmd_posts(settings, args.action)
+        if args.command == "kit":
+            return _cmd_kit(settings, args.date)
+        if args.command == "posted":
+            return _cmd_posted(settings, args.post_id, args.url)
         if args.command == "pull-products":
             return _cmd_pull_products(settings)
         if args.command == "batch":
