@@ -258,3 +258,19 @@ python -m onewrld posted 12
 - TikTok bio: `https://onewrld.us/?utm_source=tiktok&utm_medium=bio`
 
 **Change post times or daily limits:** edit `brand/platforms.toml` (for example `daily_cap = 2`), then run `schedule` again.
+
+## 17. Hooks and shot lists
+**Hooks** are the opening line of a video: the first 1 to 2 seconds, on screen. There are 110 in `brand/hooks.toml`, all written to your rules.
+```
+python -m onewrld captions import
+python -m onewrld hooks review
+```
+Review 20 at a time (`--limit 40` for more): `a` approve, `r` reject with a reason, `e` edit.
+Once some are approved, every video you render puts a **different approved hook on each version**. Each clip then automatically tests which opening line works best.
+
+**Shot list for a shoot day:**
+```
+python -m onewrld shotlist --minutes 120
+```
+This prints a checklist (and saves it in `media\shotlists\`): which formats to film, in what order (home, then outside, then the gym), every shot, and two opening-line ideas for each.
+Optional: name clips starting with their code (`F06_1.mp4`) so the system learns which formats sell.

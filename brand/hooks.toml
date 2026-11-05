@@ -1,0 +1,561 @@
+# Hook library: the opening line of a video (first 1 to 2 seconds, on screen and/or spoken).
+# Written 2026-11-05 to every rule learned so far: plain statements (L-003), physical product
+# lines (L-007), no bragging (L-006), exclusive but never rude (L-005), Icarus = pride before
+# the fall (L-001). Every hook still needs your approval: python -m onewrld hooks review
+# type: statement | founder | process | detail | icarus | discipline | contrast | list | pov
+# product: which product it may open (same tags as captions). fact_check: states a fact to verify.
+
+[[hooks]]
+type = "statement"
+product = "brand"
+text = "Nobody gave us a head start."
+
+[[hooks]]
+type = "statement"
+product = "brand"
+text = "This started with no plan B."
+
+[[hooks]]
+type = "statement"
+product = "brand"
+text = "Built in Staten Island. Slowly."
+
+[[hooks]]
+type = "statement"
+product = "brand"
+text = "Most of this brand is one person."
+
+[[hooks]]
+type = "statement"
+product = "brand"
+text = "Every piece here was a risk."
+
+[[hooks]]
+type = "statement"
+product = "brand"
+text = "Small runs. On purpose."
+
+[[hooks]]
+type = "statement"
+product = "brand"
+text = "No investors. No shortcuts."
+
+[[hooks]]
+type = "statement"
+product = "brand"
+text = "Made for people who work in silence."
+
+[[hooks]]
+type = "statement"
+product = "brand"
+text = "This brand runs on night shifts."
+
+[[hooks]]
+type = "statement"
+product = "brand"
+text = "Most brands start with money. This one started with a job."
+
+[[hooks]]
+type = "statement"
+product = "brand"
+text = "The quiet ones usually win."
+
+[[hooks]]
+type = "statement"
+product = "brand"
+text = "Some things take longer. That's fine."
+
+[[hooks]]
+type = "statement"
+product = "brand"
+text = "Not for everyone. That's the point."
+
+[[hooks]]
+type = "statement"
+product = "brand"
+text = "This is what two and a half years looks like."
+
+[[hooks]]
+type = "founder"
+product = "brand"
+text = "I work a full-time job and run this at night."
+
+[[hooks]]
+type = "founder"
+product = "brand"
+text = "Every order still goes through my hands."
+
+[[hooks]]
+type = "founder"
+product = "brand"
+fact_check = true
+text = "I pack every box myself."
+
+[[hooks]]
+type = "founder"
+product = "brand"
+text = "I started ONEWRLD with no connections."
+
+[[hooks]]
+type = "founder"
+product = "brand"
+text = "Here's what running a brand after work actually looks like."
+
+[[hooks]]
+type = "founder"
+product = "brand"
+text = "This is my second job."
+
+[[hooks]]
+type = "founder"
+product = "brand"
+text = "What I'd tell myself before starting a clothing brand."
+
+[[hooks]]
+type = "founder"
+product = "brand"
+text = "Two and a half years in. Still building."
+
+[[hooks]]
+type = "founder"
+product = "brand"
+fact_check = true
+text = "Staten Island to your door."
+
+[[hooks]]
+type = "founder"
+product = "brand"
+text = "The first people who bought this knew me. Now it has to stand on its own."
+
+[[hooks]]
+type = "process"
+product = "brand"
+text = "Packing orders after a full shift."
+
+[[hooks]]
+type = "process"
+product = "brand"
+fact_check = true
+text = "Every order, folded by hand."
+
+[[hooks]]
+type = "process"
+product = "onewrld-fall-of-icarus-zip-hoodie"
+text = "What goes into one hoodie."
+
+[[hooks]]
+type = "process"
+product = "brand"
+text = "The part of a brand nobody films."
+
+[[hooks]]
+type = "process"
+product = "brand"
+text = "This is the boring part. It matters most."
+
+[[hooks]]
+type = "process"
+product = "brand"
+text = "Quality check, piece by piece."
+
+[[hooks]]
+type = "process"
+product = "brand"
+text = "Tonight's orders."
+
+[[hooks]]
+type = "process"
+product = "brand"
+text = "How a small drop actually gets made."
+
+[[hooks]]
+type = "process"
+product = "brand"
+text = "From first sample to final piece."
+
+[[hooks]]
+type = "process"
+product = "brand"
+text = "The box you'll open."
+
+[[hooks]]
+type = "process"
+product = "brand"
+text = "Behind every piece is a late night."
+
+[[hooks]]
+type = "detail"
+product = "onewrld-fall-of-icarus-zip-hoodie"
+text = "480 GSM. Feel that weight."
+
+[[hooks]]
+type = "detail"
+product = "onewrld-fall-of-icarus-zip-hoodie"
+text = "This hoodie weighs more than you think."
+
+[[hooks]]
+type = "detail"
+product = "onewrld-fall-of-icarus-zip-hoodie"
+text = "Embroidered chest. Printed back."
+
+[[hooks]]
+type = "detail"
+product = "onewrld-fall-of-icarus-zip-hoodie"
+text = "Look closer at the stitching."
+
+[[hooks]]
+type = "detail"
+product = "onewrld-fall-of-icarus-zip-hoodie"
+text = "The back of this hoodie tells the story."
+
+[[hooks]]
+type = "detail"
+product = "onewrld-fall-of-icarus-zip-hoodie"
+text = "Heavy cotton holds its shape."
+
+[[hooks]]
+type = "detail"
+product = "onewrld-fall-of-icarus-zip-hoodie"
+text = "Zip it up. Notice the weight."
+
+[[hooks]]
+type = "detail"
+product = "onewrld-fall-of-icarus-zip-hoodie"
+text = "What 480 GSM actually means."
+
+[[hooks]]
+type = "detail"
+product = "onewrld-fall-of-icarus-zip-hoodie"
+text = "The chest says the name. The back says the story."
+
+[[hooks]]
+type = "detail"
+product = "onewrld-fall-of-icarus-zip-hoodie"
+text = "A zip hoodie built heavy."
+
+[[hooks]]
+type = "detail"
+product = "onewrld-fall-of-icarus-zip-hoodie"
+text = "Unconventional stitching, on purpose."
+
+[[hooks]]
+type = "detail"
+product = "onewrld-fall-of-icarus-zip-hoodie"
+text = "This hoodie was made to last years."
+
+[[hooks]]
+type = "detail"
+product = "onewrld-fall-of-icarus-sweatpants"
+text = "Wide from the knee down."
+
+[[hooks]]
+type = "detail"
+product = "onewrld-fall-of-icarus-sweatpants"
+text = "Sweats that stack right."
+
+[[hooks]]
+type = "detail"
+product = "onewrld-fall-of-icarus-sweatpants"
+text = "The wash is different on every pair."
+
+[[hooks]]
+type = "detail"
+product = "onewrld-fall-of-icarus-sweatpants"
+text = "Darker in the folds. That's the wash."
+
+[[hooks]]
+type = "detail"
+product = "onewrld-fall-of-icarus-sweatpants"
+text = "Heavy cotton sweats. No thin fabric here."
+
+[[hooks]]
+type = "detail"
+product = "onewrld-fall-of-icarus-sweatpants"
+text = "How these sit over sneakers."
+
+[[hooks]]
+type = "detail"
+product = "onewrld-fall-of-icarus-sweatpants"
+text = "Broken in on day one."
+
+[[hooks]]
+type = "detail"
+product = "collection:fall_of_icarus"
+text = "The full set. Same weight, same wash."
+
+[[hooks]]
+type = "detail"
+product = "collection:fall_of_icarus"
+text = "Hoodie and sweats. One set."
+
+[[hooks]]
+type = "detail"
+product = "onewrld-acid-wash-signature-hat"
+text = "Acid washed. No two alike."
+
+[[hooks]]
+type = "detail"
+product = "onewrld-acid-wash-signature-hat"
+text = "Raised stitching you can feel."
+
+[[hooks]]
+type = "detail"
+product = "onewrld-acid-wash-signature-hat"
+text = "This hat looks lived in on day one."
+
+[[hooks]]
+type = "detail"
+product = "onewrld-acid-wash-signature-hat"
+text = "Every hat comes out a little different."
+
+[[hooks]]
+type = "detail"
+product = "onewrld-acid-wash-signature-hat"
+text = "Structured crown. Curved brim. Done."
+
+[[hooks]]
+type = "detail"
+product = "onewrld-acid-wash-signature-hat"
+text = "The hat that finishes the fit."
+
+[[hooks]]
+type = "detail"
+product = "onewrld-shaker-cup"
+text = "Same cup, every session."
+
+[[hooks]]
+type = "detail"
+product = "onewrld-shaker-cup"
+text = "Mix it. Shake it. No clumps."
+
+[[hooks]]
+type = "detail"
+product = "onewrld-shaker-cup"
+text = "Leak-proof lid. Spring ball inside."
+
+[[hooks]]
+type = "detail"
+product = "onewrld-shaker-cup"
+fact_check = true
+text = "The cheapest piece of the uniform."
+
+[[hooks]]
+type = "icarus"
+product = "collection:fall_of_icarus"
+text = "Pride goes up fast. It comes down faster."
+
+[[hooks]]
+type = "icarus"
+product = "collection:fall_of_icarus"
+text = "Icarus was warned."
+
+[[hooks]]
+type = "icarus"
+product = "collection:fall_of_icarus"
+text = "He flew too close because he thought he'd made it."
+
+[[hooks]]
+type = "icarus"
+product = "collection:fall_of_icarus"
+text = "Most falls start with \"I've got this.\""
+
+[[hooks]]
+type = "icarus"
+product = "collection:fall_of_icarus"
+text = "Ego is the fastest way down."
+
+[[hooks]]
+type = "icarus"
+product = "collection:fall_of_icarus"
+text = "Fall of Icarus is a reminder, not a celebration."
+
+[[hooks]]
+type = "icarus"
+product = "collection:fall_of_icarus"
+text = "The day you stop listening is the day you start falling."
+
+[[hooks]]
+type = "icarus"
+product = "collection:fall_of_icarus"
+text = "Keep your head down and keep working."
+
+[[hooks]]
+type = "icarus"
+product = "collection:fall_of_icarus"
+text = "Success makes people loud. Stay quiet."
+
+[[hooks]]
+type = "icarus"
+product = "collection:fall_of_icarus"
+text = "What the Fall of Icarus collection means."
+
+[[hooks]]
+type = "icarus"
+product = "collection:fall_of_icarus"
+text = "A warning you can wear."
+
+[[hooks]]
+type = "icarus"
+product = "collection:fall_of_icarus"
+text = "Nobody falls from the bottom. Remember that on the way up."
+
+[[hooks]]
+type = "discipline"
+product = "brand"
+text = "5am. Nobody's watching."
+
+[[hooks]]
+type = "discipline"
+product = "brand"
+text = "The work nobody claps for."
+
+[[hooks]]
+type = "discipline"
+product = "brand"
+text = "Discipline looks boring from the outside."
+
+[[hooks]]
+type = "discipline"
+product = "brand"
+text = "You don't need an audience to train."
+
+[[hooks]]
+type = "discipline"
+product = "brand"
+text = "Same gym. Same time. Every day."
+
+[[hooks]]
+type = "discipline"
+product = "brand"
+text = "Show up when it's not fun."
+
+[[hooks]]
+type = "discipline"
+product = "brand"
+text = "The quiet part of getting better."
+
+[[hooks]]
+type = "discipline"
+product = "brand"
+text = "Some days it's just about showing up."
+
+[[hooks]]
+type = "discipline"
+product = "brand"
+text = "Consistency doesn't look like much. Until it does."
+
+[[hooks]]
+type = "discipline"
+product = "brand"
+text = "Nobody sees the hours."
+
+[[hooks]]
+type = "discipline"
+product = "brand"
+text = "Built for the session nobody posts."
+
+[[hooks]]
+type = "discipline"
+product = "brand"
+text = "Rest day still has rules."
+
+[[hooks]]
+type = "contrast"
+product = "brand"
+text = "They see the drop. Not the two years before it."
+
+[[hooks]]
+type = "contrast"
+product = "onewrld-fall-of-icarus-zip-hoodie"
+text = "Thin hoodies wear out. Heavy ones wear in."
+
+[[hooks]]
+type = "contrast"
+product = "onewrld-fall-of-icarus-zip-hoodie"
+text = "Most hoodies are light. This one isn't."
+
+[[hooks]]
+type = "contrast"
+product = "brand"
+text = "What people think running a brand looks like vs. what it is."
+
+[[hooks]]
+type = "contrast"
+product = "brand"
+text = "A brand with investors vs. a brand with a day job."
+
+[[hooks]]
+type = "contrast"
+product = "brand"
+text = "Hype fades. Quality stays."
+
+[[hooks]]
+type = "contrast"
+product = "brand"
+text = "Loud brands vs. this one."
+
+[[hooks]]
+type = "contrast"
+product = "onewrld-fall-of-icarus-zip-hoodie"
+text = "Fast fashion vs. 480 GSM."
+
+[[hooks]]
+type = "list"
+product = "brand"
+text = "3 things I learned starting a clothing brand."
+
+[[hooks]]
+type = "list"
+product = "onewrld-fall-of-icarus-zip-hoodie"
+text = "3 details you'll miss on this hoodie."
+
+[[hooks]]
+type = "list"
+product = "brand"
+text = "What I'd do differently on drop one."
+
+[[hooks]]
+type = "list"
+product = "onewrld-fall-of-icarus-zip-hoodie"
+fact_check = true
+text = "3 reasons this hoodie costs $49.99."
+
+[[hooks]]
+type = "list"
+product = "brand"
+text = "Things nobody tells you about running a brand."
+
+[[hooks]]
+type = "list"
+product = "collection:fall_of_icarus"
+text = "3 ways to wear the full set."
+
+[[hooks]]
+type = "pov"
+product = "collection:fall_of_icarus"
+text = "POV: you finally wear the fit you've been saving."
+
+[[hooks]]
+type = "pov"
+product = "onewrld-fall-of-icarus-zip-hoodie"
+text = "POV: your hoodie arrives heavier than you expected."
+
+[[hooks]]
+type = "pov"
+product = "brand"
+text = "POV: you run a brand after your 9 to 5."
+
+[[hooks]]
+type = "pov"
+product = "brand"
+text = "POV: packing orders at midnight."
+
+[[hooks]]
+type = "pov"
+product = "brand"
+text = "POV: the gym at 5am, just you."
+
+[[hooks]]
+type = "pov"
+product = "brand"
+text = "POV: you open the box."

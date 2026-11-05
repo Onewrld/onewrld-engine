@@ -38,18 +38,28 @@ def register_asset(conn: psycopg.Connection, path: Path) -> dict:
     else:
         info = studio.probe(path)
     sha = studio.file_sha(path)
+    fmt = format_from_name(path.name)
     row = conn.execute(
-        """INSERT INTO asset (sha256, path, duration, width, height, has_audio)
-           VALUES (%s,%s,%s,%s,%s,%s)
-           ON CONFLICT (sha256) DO UPDATE SET path = EXCLUDED.path
+        """INSERT INTO asset (sha256, path, duration, width, height, has_audio, format_id)
+           VALUES (%s,%s,%s,%s,%s,%s,%s)
+           ON CONFLICT (sha256) DO UPDATE SET path = EXCLUDED.path,
+               format_id = COALESCE(EXCLUDED.format_id, asset.format_id)
            RETURNING *""",
-        (sha, str(path), info["duration"], info["width"], info["height"], info["has_audio"])
+        (sha, str(path), info["duration"], info["width"], info["height"], info["has_audio"], fmt)
     ).fetchone()
     return row
 
 
+def format_from_name(name: str) -> str | None:
+    """Shot list code at the start of a file name: 'F06_weight.mp4' or 'F06 take2.mov' -> 'F06'.
+    Optional: it lets the learning loop compare formats later."""
+    import re
+    m = re.match(r"(?i)(F\d{2})(?:\b|_)", name)
+    return m.group(1).upper() if m else None
+
+
 def approved_captions(conn: psycopg.Connection, limit: int = 10,
-                      product: str | None = None) -> list[dict]:
+                      product: str | None = None, kind: str = "caption") -> list[dict]:
     """Approved captions, product ones first (they have the best approval rate, L-008).
     With `product`, only captions tagged for that product, its collection, or brand-wide."""
     from onewrld import products
@@ -57,10 +67,16 @@ def approved_captions(conn: psycopg.Connection, limit: int = 10,
     return conn.execute(
         """SELECT c.id, c.text FROM approval a JOIN caption c ON c.id = a.item_id::bigint
            WHERE a.item_type='caption' AND a.status='approved' AND NOT c.blocked
+             AND c.kind = %s
              AND (%s::text[] IS NULL OR c.product = ANY(%s::text[]))
            ORDER BY (c.pillar = 'product') DESC, (c.product = %s) DESC, a.decided_at DESC
            LIMIT %s""",
-        (targets, targets, product, limit)).fetchall()
+        (kind, targets, targets, product, limit)).fetchall()
+
+
+def approved_hooks(conn: psycopg.Connection, product: str | None = None, limit: int = 12) -> list[dict]:
+    """Approved opening lines for this product (product, collection or brand-wide)."""
+    return approved_captions(conn, limit=limit, product=product, kind="hook")
 
 
 STILL_SECONDS = 7.0
@@ -72,23 +88,31 @@ def plan(conn: psycopg.Connection, asset: dict, variants: int,
     """Queue the main render + variants. Returns job ids (existing ones are reused).
     talk=True: a talking clip. On-screen captions follow the speech word by word and pauses
     are cut; the chosen caption is kept as the post's text."""
+    hooks: list[dict] = []
     if caption_text:
         caps = [{"id": None, "text": caption_text}]
     else:
         caps = approved_captions(conn, product=product) or [{"id": None, "text": ""}]
+        hooks = approved_hooks(conn, product=product)
+    # On screen: a different approved HOOK on each version (so every clip tests hooks against
+    # each other); if no hooks are approved yet, the caption goes on screen as before.
+    # The post text is always an approved caption.
+    onscreen = hooks or caps
     still = Path(asset["path"]).suffix.lower() in studio.IMAGE_EXTS
     if still:
         max_seconds = min(max_seconds, STILL_SECONDS)
     base = studio.RenderSpec(max_seconds=max_seconds, speech_captions=talk, cut_silence=talk,
                              fit="contain" if still else "fill")
     src_seconds = max_seconds if still else asset["duration"]
-    specs = studio.variant_specs(base, [c["text"] for c in caps], variants, src_seconds)
+    specs = studio.variant_specs(base, [c["text"] for c in onscreen], variants, src_seconds)
     job_ids = []
     for i, spec in enumerate(specs):
         cap = caps[i % len(caps)]
+        hook = hooks[i % len(hooks)] if hooks else None
         key = spec.key(asset["sha256"])
         job_id, _ = enqueue(conn, "video.render",
-                            {"asset_id": asset["id"], "spec": asdict(spec), "caption_id": cap["id"]},
+                            {"asset_id": asset["id"], "spec": asdict(spec), "caption_id": cap["id"],
+                             "hook_id": hook["id"] if hook else None},
                             idempotency_key=f"render:{key}", max_attempts=2)
         job_ids.append(job_id)
     return job_ids
@@ -110,12 +134,13 @@ def render_job(settings: Settings, payload: dict):
     qc = result["qc"]
     with db.connect(settings) as conn:
         conn.execute(
-            """INSERT INTO render (asset_id, render_key, caption_id, spec, output_path, qc_passed, qc)
-               VALUES (%s,%s,%s,%s,%s,%s,%s)
+            """INSERT INTO render (asset_id, render_key, caption_id, hook_id, format_id, spec,
+                                  output_path, qc_passed, qc)
+               VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
                ON CONFLICT (render_key) DO UPDATE SET output_path=EXCLUDED.output_path,
                    qc_passed=EXCLUDED.qc_passed, qc=EXCLUDED.qc""",
-            (asset["id"], result["key"], payload.get("caption_id"), Jsonb(result["spec"]),
-             result["output"], qc["passed"],
+            (asset["id"], result["key"], payload.get("caption_id"), payload.get("hook_id"),
+             asset.get("format_id"), Jsonb(result["spec"]), result["output"], qc["passed"],
              Jsonb({"checks": qc["checks"], "lufs": qc["lufs"]})))
     if not qc["passed"]:
         failed = [k for k, ok in qc["checks"].items() if not ok]

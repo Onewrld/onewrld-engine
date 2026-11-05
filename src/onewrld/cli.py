@@ -25,6 +25,8 @@ Brand Brain (Phase 2):
   captions list          show captions with scores and status
   captions score "text"  score any caption against the brand rules
   captions feedback      your decisions + reasons + quiz profile (paste to Claude)
+  hooks review           approve / reject opening lines (the hook library)
+  shotlist               build a shoot-day shot list (--minutes 120)
 
 Video Studio (Phase 3):
   render-test            make a sample clip and render it + 3 variants (see the quality now)
@@ -248,6 +250,11 @@ def _cmd_captions(settings, action: str, text: str | None, limit: int) -> int:
                 print(f"{f.name}: {st['new']} new ({st['to_review']} to review, "
                       f"{st['blocked']} blocked, {st['below_floor']} below floor), "
                       f"{st['already_had']} already imported")
+            hooks_file = brand.BRAND_DIR / "hooks.toml"
+            if hooks_file.exists():
+                st = captions.import_hooks(conn, hooks_file)
+                print(f"hooks.toml: {st['new']} new hooks ({st['to_review']} to review), "
+                      f"{st['already_had']} already imported. Review: python -m onewrld hooks review")
             return 0
         if action == "review":
             st = captions.review(conn, limit=limit)
@@ -465,6 +472,26 @@ def _cmd_renders(settings) -> int:
     return 0
 
 
+def _cmd_hooks(settings, limit: int) -> int:
+    from onewrld import captions, db
+
+    with db.connect(settings) as conn:
+        st = captions.review(conn, limit=limit, kind="hook")
+    print(f"\nDone: {st['approved']} approved, {st['rejected']} rejected, "
+          f"{st['edited']} edited, {st['skipped']} skipped.")
+    return 0
+
+
+def _cmd_shotlist(settings, minutes: int, include_drop: bool) -> int:
+    from datetime import date
+    from onewrld import shotlist
+
+    out = shotlist.write(settings.root, minutes, date.today(), include_drop)
+    print(out.read_text(encoding="utf-8"))
+    print(f"Saved to: {out}")
+    return 0
+
+
 def _cmd_test() -> int:
     return subprocess.call([sys.executable, "-m", "pytest", "-q", "-rs"])
 
@@ -514,6 +541,12 @@ def main(argv: list[str] | None = None) -> int:
     bt = sub.add_parser("batch", help="render everything in media/products and media/inbox")
     bt.add_argument("--variants", type=int, default=3)
     bt.add_argument("--photos", action="store_true", help="also turn still photos into videos (off by default)")
+    hk = sub.add_parser("hooks", help="review the hook library")
+    hk.add_argument("action", choices=["review"])
+    hk.add_argument("--limit", type=int, default=20)
+    sl = sub.add_parser("shotlist", help="build a shoot-day shot list")
+    sl.add_argument("--minutes", type=int, default=120)
+    sl.add_argument("--drop", action="store_true", help="include new-drop tease formats")
     sub.add_parser("quiz", help="voice quiz")
     sub.add_parser("voice", help="show your voice profile")
     cp = sub.add_parser("captions", help="caption bank: import, review, list, score")
@@ -589,6 +622,10 @@ def main(argv: list[str] | None = None) -> int:
             return _cmd_pull_products(settings)
         if args.command == "batch":
             return _cmd_batch(settings, max(0, min(args.variants, 5)), args.photos)
+        if args.command == "hooks":
+            return _cmd_hooks(settings, max(1, args.limit))
+        if args.command == "shotlist":
+            return _cmd_shotlist(settings, max(30, min(args.minutes, 480)), args.drop)
         if args.command == "quiz":
             return _cmd_quiz(settings)
         if args.command == "voice":

@@ -31,6 +31,9 @@ Content, distribution, attribution and paid-ads system for ONEWRLD.
 | `src/onewrld/overlays.py` | Draws caption text, logo watermark and end card; defines the safe zone. |
 | `src/onewrld/studio.py` | Renders a clip to a finished 9:16 video; variants; quality gate. |
 | `src/onewrld/speech.py` | Speech model (optional): word timings, dead-air cuts, word-by-word captions, .srt files. |
+| `brand/hooks.toml` | 110 opening lines (hooks), typed and product-tagged. |
+| `brand/formats.toml` | 32 video formats with shot lists. |
+| `src/onewrld/shotlist.py` | Builds a shoot-day shot list from the formats. |
 | `brand/products.toml` | In-stock products: facts, collection, photo links. |
 | `src/onewrld/products.py` | Product catalog and photo downloads. |
 | `brand/platforms.toml` | Each platform: handle, daily cap, post times, caption and link rules. |

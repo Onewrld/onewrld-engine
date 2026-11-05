@@ -1,0 +1,597 @@
+# Format library: repeatable video formats. The shot list generator builds shoot days from these.
+# location: home | gym | outdoor | anywhere   talking: you speak to camera (uses speech captions)
+# audio: voice | original (real sound) | none   seconds: finished length   film_minutes: time to film
+# products: which item it shows (brand = no specific item)   drop_only: only for a new-drop tease
+# Each shot: framing | what to film | duration
+
+[[formats]]
+id = "F01"
+name = "Why I started"
+what = "Talk to camera: why ONEWRLD exists, no head start."
+location = "home"
+talking = true
+audio = "voice"
+seconds = 45
+film_minutes = 10
+products = "brand"
+hook_types = ["founder", "statement"]
+shots = [
+  "Medium close-up, eye level, phone vertical | tell the story in your own words | 3-5 min take (gets cut down)",
+]
+edit = "Speech captions, pauses cut, hook in first 2 s."
+drop_only = false
+
+[[formats]]
+id = "F02"
+name = "What Fall of Icarus means"
+what = "Talk to camera: pride comes before the fall, why that's the collection."
+location = "home"
+talking = true
+audio = "voice"
+seconds = 40
+film_minutes = 8
+products = "set"
+hook_types = ["icarus"]
+shots = [
+  "Medium close-up wearing the hoodie | explain the meaning plainly | 2-3 min take",
+  "Cutaway: slow push on the back print | 6 s",
+]
+edit = "Speech captions; cutaway over the line about the back print."
+drop_only = false
+
+[[formats]]
+id = "F03"
+name = "3 lessons"
+what = "Talk to camera: 3 things learned building the brand."
+location = "home"
+talking = true
+audio = "voice"
+seconds = 35
+film_minutes = 8
+products = "brand"
+hook_types = ["list", "founder"]
+shots = [
+  "Medium close-up | 3 lessons, one sentence each, pause between | 2 min take",
+]
+edit = "Number each lesson on screen."
+drop_only = false
+
+[[formats]]
+id = "F04"
+name = "Packing orders"
+what = "Real orders being folded, bagged, labelled. No talking."
+location = "home"
+talking = false
+audio = "original"
+seconds = 15
+film_minutes = 10
+products = "any"
+hook_types = ["process", "pov"]
+shots = [
+  "Top-down on table | fold a piece | 8 s",
+  "Close | bag and seal | 5 s",
+  "Hands | label goes on | 4 s",
+  "Wide | stack of packed orders | 4 s",
+]
+edit = "Fast cuts on each action; keep the real sound (tape, paper)."
+drop_only = false
+
+[[formats]]
+id = "F05"
+name = "After the 9 to 5"
+what = "Day-in-the-life: off work, straight into brand work."
+location = "anywhere"
+talking = false
+audio = "original"
+seconds = 20
+film_minutes = 15
+products = "brand"
+hook_types = ["founder", "pov", "contrast"]
+shots = [
+  "Walking out of work / car | 4 s",
+  "Keys, door, bag down | 3 s",
+  "Laptop or orders on the table | 5 s",
+  "Packing or checking pieces | 6 s",
+  "Lights off late | 3 s",
+]
+edit = "One hook, 5 quick scenes, clock times on screen if true."
+drop_only = false
+
+[[formats]]
+id = "F06"
+name = "Weight test"
+what = "Show how heavy the hoodie is: squeeze, fold, drop."
+location = "home"
+talking = false
+audio = "original"
+seconds = 12
+film_minutes = 6
+products = "hoodie"
+hook_types = ["detail", "contrast"]
+shots = [
+  "Close, hand squeezes the fabric | 4 s",
+  "Hoodie held up, then dropped on the table (hear the weight) | 4 s",
+  "Folded stack | 3 s",
+]
+edit = "Hard cut on the drop sound."
+drop_only = false
+
+[[formats]]
+id = "F07"
+name = "Stitching macro"
+what = "Extreme close-ups of embroidery and stitching."
+location = "home"
+talking = false
+audio = "none"
+seconds = 12
+film_minutes = 6
+products = "hoodie"
+hook_types = ["detail"]
+shots = [
+  "Macro, slow slide across chest embroidery | 5 s",
+  "Macro on a seam | 4 s",
+  "Macro on the back print edge | 4 s",
+]
+edit = "Black and white works here; slow and quiet."
+drop_only = false
+
+[[formats]]
+id = "F08"
+name = "Front then back"
+what = "Show the front, then turn to reveal the back print."
+location = "anywhere"
+talking = false
+audio = "original"
+seconds = 10
+film_minutes = 5
+products = "hoodie"
+hook_types = ["detail", "icarus"]
+shots = [
+  "Wearing it, front to camera | 3 s",
+  "Turn around slowly, back print to camera | 5 s",
+]
+edit = "Hook over the front; the turn is the payoff."
+drop_only = false
+
+[[formats]]
+id = "F09"
+name = "Full fit walk"
+what = "Walk toward camera in the full set, turn, walk away."
+location = "outdoor"
+talking = false
+audio = "original"
+seconds = 12
+film_minutes = 8
+products = "set"
+hook_types = ["detail", "pov"]
+shots = [
+  "Full body, phone at waist height | walk toward camera | 5 s",
+  "Stop, turn | 3 s",
+  "Walk away | 3 s",
+]
+edit = "One continuous take is fine."
+drop_only = false
+
+[[formats]]
+id = "F10"
+name = "Zip up"
+what = "Putting the hoodie on: pull it on, zip, hood."
+location = "home"
+talking = false
+audio = "original"
+seconds = 8
+film_minutes = 4
+products = "hoodie"
+hook_types = ["detail", "pov"]
+shots = [
+  "Chest height | zip from bottom to top | 4 s",
+  "Pull the hood | 3 s",
+]
+edit = "Real zip sound."
+drop_only = false
+
+[[formats]]
+id = "F11"
+name = "The wash"
+what = "Hand slowly down the sweatpants; folds and fade."
+location = "home"
+talking = false
+audio = "none"
+seconds = 10
+film_minutes = 5
+products = "sweats"
+hook_types = ["detail"]
+shots = [
+  "Close, hand runs down the leg | 5 s",
+  "Close on folds | 4 s",
+]
+edit = "Slow; natural light from a window."
+drop_only = false
+
+[[formats]]
+id = "F12"
+name = "The stack"
+what = "Sweats stacking over sneakers, walking."
+location = "outdoor"
+talking = false
+audio = "original"
+seconds = 10
+film_minutes = 5
+products = "sweats"
+hook_types = ["detail", "contrast"]
+shots = [
+  "Ankle height | standing, the stack | 3 s",
+  "Ankle height | walking past camera | 5 s",
+]
+edit = ""
+drop_only = false
+
+[[formats]]
+id = "F13"
+name = "Gym arrival"
+what = "Walk into the gym in the set, bag down."
+location = "gym"
+talking = false
+audio = "original"
+seconds = 10
+film_minutes = 6
+products = "set"
+hook_types = ["discipline", "pov"]
+shots = [
+  "Behind you | walking in | 4 s",
+  "Bag drops | 2 s",
+  "Sitting, lacing up | 4 s",
+]
+edit = ""
+drop_only = false
+
+[[formats]]
+id = "F14"
+name = "Quiet session"
+what = "Training in the clothes. No talking; text only."
+location = "gym"
+talking = false
+audio = "original"
+seconds = 15
+film_minutes = 15
+products = "any"
+hook_types = ["discipline"]
+shots = [
+  "Wide | a set | 5 s",
+  "Close | grip or face, focused | 3 s",
+  "Between sets, sitting | 4 s",
+]
+edit = "Hook stays on screen 3 s; no music needed."
+drop_only = false
+
+[[formats]]
+id = "F15"
+name = "5am"
+what = "Empty gym atmosphere, early."
+location = "gym"
+talking = false
+audio = "original"
+seconds = 10
+film_minutes = 8
+products = "brand"
+hook_types = ["discipline", "pov"]
+shots = [
+  "Wide, empty gym | 4 s",
+  "Lights or door | 3 s",
+  "You starting | 4 s",
+]
+edit = "Black and white."
+drop_only = false
+
+[[formats]]
+id = "F16"
+name = "Unboxing POV"
+what = "What a customer sees opening the order."
+location = "home"
+talking = false
+audio = "original"
+seconds = 15
+film_minutes = 6
+products = "any"
+hook_types = ["pov", "process"]
+shots = [
+  "Top-down | box closed | 2 s",
+  "Opening | 4 s",
+  "Pulling the piece out, unfolding | 6 s",
+]
+edit = ""
+drop_only = false
+
+[[formats]]
+id = "F17"
+name = "Quality check"
+what = "Inspecting pieces before they ship."
+location = "home"
+talking = false
+audio = "original"
+seconds = 12
+film_minutes = 6
+products = "any"
+hook_types = ["process"]
+shots = [
+  "Close | checking a seam | 4 s",
+  "Turning a piece inside out | 4 s",
+  "Folding the approved piece | 3 s",
+]
+edit = ""
+drop_only = false
+
+[[formats]]
+id = "F18"
+name = "Heavy vs thin"
+what = "Drop the 480 GSM hoodie next to a thin hoodie."
+location = "home"
+talking = false
+audio = "original"
+seconds = 10
+film_minutes = 5
+products = "hoodie"
+hook_types = ["contrast"]
+shots = [
+  "Side by side, both held up | 3 s",
+  "Both dropped | 3 s",
+  "Close on the thickness of each | 4 s",
+]
+edit = "No brand names on the other hoodie."
+drop_only = false
+
+[[formats]]
+id = "F19"
+name = "Myth vs reality"
+what = "What people think running a brand is vs. what it is."
+location = "anywhere"
+talking = false
+audio = "original"
+seconds = 15
+film_minutes = 8
+products = "brand"
+hook_types = ["contrast", "founder"]
+shots = [
+  "'Myth' shot: posed, stylish | 3 s",
+  "'Reality' shot: packing at night / spreadsheet | 4 s",
+  "Repeat once more | 6 s",
+]
+edit = "Label each shot on screen."
+drop_only = false
+
+[[formats]]
+id = "F20"
+name = "Sample to final"
+what = "How a piece went from first sample to final."
+location = "home"
+talking = false
+audio = "voice"
+seconds = 20
+film_minutes = 8
+products = "any"
+hook_types = ["process"]
+shots = [
+  "Holding the first sample | 4 s",
+  "Holding the final | 4 s",
+  "Close on what changed | 6 s",
+]
+edit = "Optional voice-over."
+drop_only = false
+
+[[formats]]
+id = "F21"
+name = "No two alike"
+what = "Several hats side by side; the wash differs on each."
+location = "home"
+talking = false
+audio = "none"
+seconds = 10
+film_minutes = 5
+products = "hat"
+hook_types = ["detail"]
+shots = [
+  "Top-down, 3+ hats in a row | 4 s",
+  "Slow slide along them | 5 s",
+]
+edit = ""
+drop_only = false
+
+[[formats]]
+id = "F22"
+name = "Shaker routine"
+what = "Mixing the post-workout shake."
+location = "gym"
+talking = false
+audio = "original"
+seconds = 8
+film_minutes = 4
+products = "cup"
+hook_types = ["detail", "discipline"]
+shots = [
+  "Scoop goes in | 2 s",
+  "Shake | 3 s",
+  "Drink | 2 s",
+]
+edit = ""
+drop_only = false
+
+[[formats]]
+id = "F23"
+name = "Silent cinematic"
+what = "Slow black-and-white b-roll, one line of text."
+location = "anywhere"
+talking = false
+audio = "none"
+seconds = 12
+film_minutes = 10
+products = "any"
+hook_types = ["statement", "icarus", "discipline"]
+shots = [
+  "Any 3-4 slow shots from the day | 3 s each",
+]
+edit = "Built from leftover shots: no extra filming."
+drop_only = false
+
+[[formats]]
+id = "F24"
+name = "Text story"
+what = "A short story told in on-screen text over b-roll."
+location = "anywhere"
+talking = false
+audio = "none"
+seconds = 18
+film_minutes = 0
+products = "brand"
+hook_types = ["founder", "statement"]
+shots = [
+  "Uses existing clips",
+]
+edit = "3-4 lines of text, one per shot."
+drop_only = false
+
+[[formats]]
+id = "F25"
+name = "Comment reply"
+what = "Answer a real comment on camera."
+location = "home"
+talking = true
+audio = "voice"
+seconds = 25
+film_minutes = 5
+products = "brand"
+hook_types = ["founder"]
+shots = [
+  "Medium close-up | read the comment, answer it | 1 min take",
+]
+edit = "Show the comment as a sticker."
+drop_only = false
+
+[[formats]]
+id = "F26"
+name = "Customer proof"
+what = "A real customer wearing it (written permission first)."
+location = "anywhere"
+talking = false
+audio = "original"
+seconds = 12
+film_minutes = 0
+products = "any"
+hook_types = ["pov"]
+shots = [
+  "Customer's own clip",
+]
+edit = "Permission recorded before use."
+drop_only = false
+
+[[formats]]
+id = "F27"
+name = "Event recap"
+what = "Quick cuts from a gym event or pop-up."
+location = "gym"
+talking = false
+audio = "original"
+seconds = 20
+film_minutes = 20
+products = "any"
+hook_types = ["process", "statement"]
+shots = [
+  "Wide of the space | 3 s",
+  "People trying things on | 6 s",
+  "Table / rack | 3 s",
+  "Faces (with permission) | 6 s",
+]
+edit = ""
+drop_only = false
+
+[[formats]]
+id = "F28"
+name = "Drop tease"
+what = "Covered piece, a detail, a date. For the next drop only."
+location = "home"
+talking = false
+audio = "none"
+seconds = 10
+film_minutes = 6
+products = "none"
+hook_types = ["statement"]
+shots = [
+  "Piece under a cloth | 3 s",
+  "One detail visible | 4 s",
+  "Date on screen | 3 s",
+]
+edit = "Use 2 weeks before release."
+drop_only = true
+
+[[formats]]
+id = "F29"
+name = "What you're paying for"
+what = "Honest breakdown: fabric, embroidery, print, small run."
+location = "home"
+talking = true
+audio = "voice"
+seconds = 30
+film_minutes = 6
+products = "hoodie"
+hook_types = ["list", "detail"]
+shots = [
+  "Medium close-up holding the hoodie | explain each part | 1-2 min take",
+  "Cutaways to each detail | 3 s each",
+]
+edit = "Only state real numbers."
+drop_only = false
+
+[[formats]]
+id = "F30"
+name = "3 ways to wear it"
+what = "The set worn 3 ways (full set, with jeans, layered)."
+location = "home"
+talking = false
+audio = "original"
+seconds = 15
+film_minutes = 12
+products = "set"
+hook_types = ["list", "pov"]
+shots = [
+  "Mirror, look 1 | 4 s",
+  "Look 2 | 4 s",
+  "Look 3 | 4 s",
+]
+edit = "Hard cut between looks."
+drop_only = false
+
+[[formats]]
+id = "F31"
+name = "Staten Island"
+what = "The pieces in local places that mean something."
+location = "outdoor"
+talking = false
+audio = "original"
+seconds = 12
+film_minutes = 15
+products = "any"
+hook_types = ["statement", "founder"]
+shots = [
+  "Wide, a local spot | 4 s",
+  "Wearing the piece there | 4 s",
+  "Detail shot | 3 s",
+]
+edit = ""
+drop_only = false
+
+[[formats]]
+id = "F32"
+name = "Gym mirror check"
+what = "Quick mirror check in the set before a session."
+location = "gym"
+talking = false
+audio = "original"
+seconds = 8
+film_minutes = 3
+products = "set"
+hook_types = ["discipline", "pov"]
+shots = [
+  "Mirror, full body | 4 s",
+  "Adjust hood / sleeves | 3 s",
+]
+edit = ""
+drop_only = false

@@ -231,3 +231,17 @@ Every decision is written as Decision / Why / What if. Newest at the bottom.
 
 ## D-055: `tzdata` added as a dependency
 - **Why:** Windows has no built-in time-zone database, so scheduling in Eastern time would fail on the owner's PC. `tzdata` is pure Python with ready-made installs for every version (rule M-006 satisfied).
+
+## D-056: The hook library: 110 hooks in 9 types, approved like captions
+- **What a hook is:** the opening line of a video (the first 1 to 2 seconds). On short-form, this decides whether anyone watches the rest.
+- **Types:** statement, founder, process, product detail, icarus (pride before the fall), discipline, contrast, list, POV. Every hook passes the brand rules and fits LESSONS L-001 to L-007; none are questions (the quiz said statements).
+- **Stored with captions** (kind = hook): same scoring, approval and feedback. The same words can be approved separately as a hook and as a caption.
+
+## D-057: On screen = a hook; post text = a caption; each version gets a different hook
+- **Why:** This turns every clip into a built-in test of which hooks work. The video records `hook_id` and `format_id`, so the learning loop (Phase 6) can compare them on real views and sales.
+- **What if:** If no hooks are approved yet for a product, the caption goes on screen as before.
+
+## D-058: Format library (32) and shot list generator
+- **Formats:** each has a location, length, filming time, products, suited hook types and a shot list. Priority right now: talking clips (one talk becomes many posts), then Fall of Icarus product details, packing, the full set, the gym.
+- **Shot lists** fit the time you have, skip products that are out of stock, group by location (15 min allowed per location change), and suggest unique, product-matched hooks per format.
+- **What if:** If a format underperforms, Phase 6 drops it down the priority list.

@@ -29,27 +29,31 @@ def text_hash(text: str) -> str:
 
 def add_caption(conn: psycopg.Connection, text: str, *, pillar: str | None = None,
                 product: str | None = None, source: str = "session",
-                fact_check: bool = False, parent_id: int | None = None) -> tuple[int, bool]:
+                fact_check: bool = False, parent_id: int | None = None,
+                kind: str = "caption", hook_type: str | None = None) -> tuple[int, bool]:
     """Score and store one caption. Returns (id, created). Same text twice = no-op.
     Captions at or above the quality floor get a pending approval automatically."""
     s = score_caption(text)
+    # Hooks are hashed separately, so the same words can be approved as a caption AND a hook.
+    h = text_hash(text) if kind == "caption" else text_hash(f"{kind}: {text}")
     with conn.transaction():
         row = conn.execute(
             """INSERT INTO caption (text, text_hash, pillar, product, source, fact_check,
-                                    score, blocked, score_reasons, parent_id)
-               VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                                    score, blocked, score_reasons, parent_id, kind, hook_type)
+               VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                ON CONFLICT (text_hash) DO NOTHING RETURNING id""",
-            (text.strip(), text_hash(text), pillar, product, source, fact_check,
-             s.score, s.blocked, Jsonb(s.reasons), parent_id)).fetchone()
+            (text.strip(), h, pillar, product, source, fact_check,
+             s.score, s.blocked, Jsonb(s.reasons), parent_id, kind, hook_type)).fetchone()
         if row is None:
             # Already have this caption: keep its approval history, but refresh the
             # labels (pillar, product, fact_check) from the file, which is the source of truth.
             existing = conn.execute(
                 """UPDATE caption SET pillar = COALESCE(%s, pillar),
                                       product = COALESCE(%s, product),
+                                      hook_type = COALESCE(%s, hook_type),
                                       fact_check = %s
                    WHERE text_hash = %s RETURNING id""",
-                (pillar, product, fact_check, text_hash(text))).fetchone()
+                (pillar, product, hook_type, fact_check, h)).fetchone()
             return existing["id"], False
         if s.passes:
             conn.execute(
@@ -80,12 +84,15 @@ def import_file(conn: psycopg.Connection, path: Path) -> dict[str, int]:
     return stats
 
 
-def pending(conn: psycopg.Connection, limit: int = 10) -> list[dict]:
+def pending(conn: psycopg.Connection, limit: int = 10, kind: str = "caption") -> list[dict]:
     return conn.execute(
-        """SELECT c.id, c.text, c.pillar, c.score, c.score_reasons, c.fact_check
+        """SELECT c.id, c.text, c.pillar, c.score, c.score_reasons, c.fact_check, c.hook_type
            FROM approval a JOIN caption c ON c.id = a.item_id::bigint
-           WHERE a.item_type = 'caption' AND a.status = 'pending'
-           ORDER BY c.score DESC, c.id DESC LIMIT %s""", (limit,)).fetchall()
+           WHERE a.item_type = 'caption' AND a.status = 'pending' AND c.kind = %s
+           ORDER BY c.score DESC,
+                    CASE WHEN c.kind = 'hook' THEN c.id END ASC,   -- hooks: library order
+                    c.id DESC                                       -- captions: newest batch first
+           LIMIT %s""", (kind, limit)).fetchall()
 
 
 def decide(conn: psycopg.Connection, caption_id: int, status: str, note: str = "") -> None:
@@ -100,12 +107,13 @@ def decide(conn: psycopg.Connection, caption_id: int, status: str, note: str = "
 def record_edit(conn: psycopg.Connection, caption_id: int, new_text: str, note: str = "") -> int:
     """Your edit = the original is rejected with your reason, and your version is saved as
     an approved caption linked to it. The pair (before, after) is the learning signal."""
-    orig = conn.execute("SELECT pillar, product, fact_check FROM caption WHERE id=%s",
+    orig = conn.execute("SELECT pillar, product, fact_check, kind, hook_type FROM caption WHERE id=%s",
                         (caption_id,)).fetchone()
     decide(conn, caption_id, "rejected", f"edited by owner. {note}".strip())
     new_id, _ = add_caption(conn, new_text, pillar=orig["pillar"], product=orig["product"],
                             source="owner_edit", fact_check=orig["fact_check"],
-                            parent_id=caption_id)
+                            parent_id=caption_id,
+                            kind=orig["kind"], hook_type=orig["hook_type"])
     conn.execute(
         """INSERT INTO approval (item_type, item_id, summary, status, decided_at, decision_note)
            VALUES ('caption', %s, %s, 'approved', now(), 'owner edit')
@@ -116,15 +124,17 @@ def record_edit(conn: psycopg.Connection, caption_id: int, new_text: str, note: 
 
 
 def review(conn: psycopg.Connection, limit: int = 10,
-           ask: Callable[[str], str] = input, show: Callable[[str], None] = print) -> dict:
+           ask: Callable[[str], str] = input, show: Callable[[str], None] = print,
+           kind: str = "caption") -> dict:
     """Walk through pending captions one at a time, newest batch first. a=approve r=reject e=edit s=skip q=quit."""
     stats = {"approved": 0, "rejected": 0, "edited": 0, "skipped": 0}
-    items = pending(conn, limit)
+    items = pending(conn, limit, kind)
     if not items:
         show("Nothing waiting for review.")
         return stats
     for i, c in enumerate(items, 1):
-        show(f"\n[{i}/{len(items)}]  score {c['score']}  ({c['pillar']})")
+        label = c["hook_type"] if kind == "hook" else c["pillar"]
+        show(f"\n[{i}/{len(items)}]  score {c['score']}  ({label})")
         show(f"    {c['text']}")
         if c["score_reasons"]:
             show(f"    notes: {'; '.join(c['score_reasons'])}")
@@ -184,3 +194,20 @@ def feedback_report(conn: psycopg.Connection) -> str:
             note = f"   <- {r['decision_note']}" if r["decision_note"] else ""
             out.append(f"  [{r['pillar']}] {r['text']}{note}")
     return "\n".join(out)
+
+
+def import_hooks(conn: psycopg.Connection, path: Path) -> dict[str, int]:
+    """Load the hook library (brand/hooks.toml). Same scoring and approval as captions."""
+    data = tomllib.loads(path.read_text(encoding="utf-8"))
+    stats = {"new": 0, "already_had": 0, "to_review": 0, "blocked": 0}
+    for item in data["hooks"]:
+        hid, created = add_caption(conn, item["text"], pillar="hook", product=item.get("product"),
+                                   fact_check=bool(item.get("fact_check")), kind="hook",
+                                   hook_type=item.get("type"))
+        if not created:
+            stats["already_had"] += 1
+            continue
+        stats["new"] += 1
+        row = conn.execute("SELECT blocked, score FROM caption WHERE id=%s", (hid,)).fetchone()
+        stats["blocked" if row["blocked"] else "to_review"] += 1
+    return stats
