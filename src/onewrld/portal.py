@@ -8,7 +8,10 @@ Supabase's API, protected by Row Level Security). The engine's own tables stay p
 
 from __future__ import annotations
 
+import json
 import re
+import urllib.error
+import urllib.request
 from pathlib import Path
 
 import psycopg
@@ -30,7 +33,8 @@ def setup(conn: psycopg.Connection, schema: str = "public") -> list[str]:
     """Apply portal SQL files not yet applied to `schema`. Needs Supabase's `auth` schema."""
     if not re.match(r"^[a-z_][a-z0-9_]{0,40}$", schema):
         raise PermanentError(f"invalid schema name {schema!r}")
-    has_auth = conn.execute("SELECT to_regclass('auth.users') IS NOT NULL AS ok").fetchone()["ok"]
+    has_auth = conn.execute("""SELECT to_regclass('auth.users') IS NOT NULL
+                                      AND to_regclass('storage.objects') IS NOT NULL AS ok""").fetchone()["ok"]
     if not has_auth:
         raise PermanentError("This database has no Supabase login system (auth.users). "
                              "Run portal setup against your Supabase project.")
@@ -66,6 +70,30 @@ def invite(conn: psycopg.Connection, email: str, name: str, code: str | None = N
         conn.execute(
             f"""UPDATE {schema}.profiles SET display_name=%s, discount_code=%s, ref_link=%s
                 WHERE email=%s""", (name.strip(), code, link, email))
+
+
+def create_login(settings: Settings, email: str, opener=urllib.request.urlopen) -> str:
+    """Create the person's Supabase login (confirmed email, no password) so the portal's
+    "send me a login link" works for them. Returns 'created', 'exists' or 'skipped'
+    (no Supabase admin key configured)."""
+    if not (settings.supabase_url and settings.supabase_service_key):
+        return "skipped"
+    req = urllib.request.Request(
+        f"{settings.supabase_url}/auth/v1/admin/users", method="POST",
+        data=json.dumps({"email": email.strip().lower(), "email_confirm": True}).encode(),
+        headers={"apikey": settings.supabase_service_key,
+                 "Authorization": f"Bearer {settings.supabase_service_key}",
+                 "Content-Type": "application/json"})
+    try:
+        with opener(req, timeout=20):
+            return "created"
+    except urllib.error.HTTPError as e:
+        body = e.read().decode(errors="replace")
+        if e.code == 422 or "already" in body.lower():
+            return "exists"
+        raise PermanentError(f"Supabase refused to create the login ({e.code}): {body[:200]}") from None
+    except OSError as e:
+        raise PermanentError(f"Couldn't reach Supabase to create the login: {e}") from None
 
 
 def make_owner(conn: psycopg.Connection, email: str, schema: str = "public") -> bool:

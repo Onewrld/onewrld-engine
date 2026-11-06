@@ -24,6 +24,15 @@ CREATE OR REPLACE FUNCTION auth.uid() RETURNS uuid LANGUAGE sql STABLE AS
   $$ SELECT nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
 GRANT USAGE ON SCHEMA auth TO authenticated, anon;
 GRANT EXECUTE ON FUNCTION auth.uid() TO authenticated, anon;
+CREATE SCHEMA IF NOT EXISTS storage;
+CREATE TABLE IF NOT EXISTS storage.buckets (id text PRIMARY KEY, name text, public boolean);
+CREATE TABLE IF NOT EXISTS storage.objects (id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+                                            bucket_id text, name text, owner uuid);
+ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+CREATE OR REPLACE FUNCTION storage.foldername(name text) RETURNS text[] LANGUAGE sql IMMUTABLE AS
+  $$ SELECT (string_to_array(name, '/'))[1:array_length(string_to_array(name, '/'), 1) - 1] $$;
+GRANT USAGE ON SCHEMA storage TO authenticated, anon;
+GRANT SELECT, INSERT ON storage.objects TO authenticated;
 """
 
 
@@ -36,17 +45,19 @@ def pdb(db_settings):
     schema = f"ptest_{uuid.uuid4().hex[:8]}"
     with psycopg.connect(db_settings.database_url, autocommit=True) as c:
         c.execute(STUB_AUTH)
+        c.execute("DELETE FROM storage.objects")   # local stand-in only: start each test empty
         c.execute(f"CREATE SCHEMA {schema}")
         # behave like Supabase: new tables are granted to anon/authenticated by default
         c.execute(f"ALTER DEFAULT PRIVILEGES IN SCHEMA {schema} GRANT ALL ON TABLES TO anon, authenticated")
         c.execute(f"ALTER DEFAULT PRIVILEGES IN SCHEMA {schema} GRANT ALL ON SEQUENCES TO anon, authenticated")
     with db.connect(db_settings) as conn:
-        assert portal.setup(conn, schema) == ["0001_portal.sql"]
+        assert portal.setup(conn, schema) == ["0001_portal.sql", "0002_storage.sql"]
         assert portal.setup(conn, schema) == []          # safe to run again
         try:
             yield conn, schema
         finally:
             conn.execute(f"DROP SCHEMA {schema} CASCADE")
+            conn.execute("DELETE FROM storage.objects")
 
 
 def signup(conn, email):
@@ -226,3 +237,88 @@ def test_affiliates_cannot_write_around_the_buttons(team, sql):
     assert changed == 0
     assert conn.execute(f"SELECT role FROM {s}.profiles WHERE id=%s", (ids["blake"],)).fetchone()["role"] == "affiliate"
     assert conn.execute(f"SELECT count(*) AS n FROM {s}.submissions").fetchone()["n"] == 1
+
+
+
+# --- video storage rules --------------------------------------------------------------
+
+def _put(conn, bucket, name):
+    conn.execute("INSERT INTO storage.objects (bucket_id, name) VALUES (%s, %s)", (bucket, name))
+
+
+def _visible(conn, bucket):
+    return sorted(r["name"] for r in conn.execute(
+        "SELECT name FROM storage.objects WHERE bucket_id=%s", (bucket,)))
+
+
+def test_affiliates_upload_only_into_their_own_folder(team):
+    conn, s, ids = team
+    with as_user(conn, ids["blake"]):
+        _put(conn, "uploads", f"{ids['blake']}/clip1.mp4")
+    with pytest.raises(psycopg.errors.InsufficientPrivilege):
+        with as_user(conn, ids["blake"]):
+            _put(conn, "uploads", f"{ids['jess']}/sneaky.mp4")
+    with pytest.raises(psycopg.errors.InsufficientPrivilege):
+        with as_user(conn, ids["blake"]):
+            _put(conn, "packs", "packs/fake.mp4")     # only the engine writes finished posts
+
+
+def test_affiliates_see_only_their_own_raw_clips(team):
+    conn, s, ids = team
+    for n in ("blake", "jess"):
+        with as_user(conn, ids[n]):
+            _put(conn, "uploads", f"{ids[n]}/{n}.mp4")
+    with as_user(conn, ids["blake"]):
+        assert _visible(conn, "uploads") == [f"{ids['blake']}/blake.mp4"]
+    with as_user(conn, ids["boss"]):
+        assert len(_visible(conn, "uploads")) == 2
+
+
+def test_finished_post_files_only_for_assigned_affiliates(team):
+    conn, s, ids = team
+    pk = _pack(conn, s, ids["blake"])                # its video_key is 'packs/1.mp4'
+    _put(conn, "packs", "packs/1.mp4")                # written by the engine (service role)
+    with as_user(conn, ids["jess"]):
+        assert _visible(conn, "packs") == []           # not assigned yet: can't even see it
+    with as_user(conn, ids["boss"]):
+        conn.execute(f"SELECT {s}.approve_pack(%s, %s)", (pk, [ids["jess"]]))
+    with as_user(conn, ids["jess"]):
+        assert _visible(conn, "packs") == ["packs/1.mp4"]
+    with as_user(conn, ids["blake"]):
+        assert _visible(conn, "packs") == []           # Blake wasn't sent this one
+
+
+# --- creating logins through Supabase's admin API (no network: fake server) ---------------
+
+class _Resp:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *a):
+        return False
+
+
+def test_create_login_sends_confirmed_email_with_service_key(make_settings):
+    s = make_settings(SUPABASE_URL="https://abc.supabase.co/", SUPABASE_SERVICE_ROLE_KEY="secret-key")
+    seen = {}
+
+    def opener(req, timeout=None):
+        seen["url"], seen["auth"], seen["body"] = req.full_url, req.headers["Authorization"], req.data
+        return _Resp()
+    assert portal.create_login(s, "Blake@Example.com", opener) == "created"
+    assert seen["url"] == "https://abc.supabase.co/auth/v1/admin/users"
+    assert seen["auth"] == "Bearer secret-key"
+    assert b'"email": "blake@example.com"' in seen["body"] and b'"email_confirm": true' in seen["body"]
+    assert "secret-key" not in repr(s)          # never printed
+
+
+def test_create_login_existing_user_is_fine_and_unconfigured_skips(make_settings):
+    import io
+    import urllib.error
+    s = make_settings(SUPABASE_URL="https://abc.supabase.co", SUPABASE_SERVICE_ROLE_KEY="k")
+
+    def opener(req, timeout=None):
+        raise urllib.error.HTTPError(req.full_url, 422, "x", {}, io.BytesIO(b'{"msg":"already registered"}'))
+    assert portal.create_login(s, "a@b.com", opener) == "exists"
+    from dataclasses import replace
+    assert portal.create_login(replace(s, supabase_url="", supabase_service_key=""), "a@b.com") == "skipped"

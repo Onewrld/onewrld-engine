@@ -512,7 +512,12 @@ def _cmd_portal(settings, args) -> int:
                 print('Usage: python -m onewrld portal invite EMAIL "Name" --code CODE --link URL')
                 return 1
             portal.invite(conn, args.email, args.name, args.code, args.link)
-            print(f"Invited {args.email}. They can log in to the portal with that email.")
+            login = portal.create_login(settings, args.email)
+            if login == "skipped":
+                print(f"Invited {args.email}. Add SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY to .env "
+                      "so this also creates their login (RUNBOOK 19), or add the user in Supabase.")
+            else:
+                print(f"Invited {args.email} (login {login}). They can log in at your portal address.")
             return 0
         if args.action == "owner":
             ok = portal.make_owner(conn, args.email or "")

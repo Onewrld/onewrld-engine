@@ -17,7 +17,8 @@ from dotenv import dotenv_values
 
 from onewrld.config import PROJECT_ROOT, load_settings
 
-ENV_KEYS = ("MODE", "ALERT_EMAIL", "DATABASE_URL", "DB_SCHEMA", "ONEWRLD_ROOT")
+ENV_KEYS = ("MODE", "ALERT_EMAIL", "DATABASE_URL", "DB_SCHEMA", "ONEWRLD_ROOT",
+            "SUPABASE_URL", "SUPABASE_SERVICE_ROLE_KEY", "SMTP_USER", "SMTP_APP_PASSWORD")
 
 
 @pytest.fixture(autouse=True)

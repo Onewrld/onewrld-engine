@@ -35,6 +35,10 @@ class Settings:
     smtp_app_password: str = field(default="", repr=False)
     smtp_host: str = "smtp.gmail.com"
     smtp_port: int = 465
+    # Supabase project URL + service_role key: lets `portal invite` create logins. The key is
+    # SECRET (it bypasses all security rules): .env only, never in the website or git.
+    supabase_url: str = ""
+    supabase_service_key: str = field(default="", repr=False)
 
     @property
     def email_configured(self) -> bool:
@@ -79,6 +83,8 @@ def load_settings(root: Path | None = None, env_file: Path | None = None) -> Set
         smtp_app_password=os.environ.get("SMTP_APP_PASSWORD", "").replace(" ", "").strip(),
         smtp_host=os.environ.get("SMTP_HOST", "smtp.gmail.com").strip() or "smtp.gmail.com",
         smtp_port=_int_setting("SMTP_PORT", 465),
+        supabase_url=os.environ.get("SUPABASE_URL", "").strip().rstrip("/"),
+        supabase_service_key=os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "").strip(),
     )
 
 

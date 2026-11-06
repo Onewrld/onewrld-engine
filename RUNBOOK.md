@@ -302,3 +302,32 @@ python -m onewrld portal invite blake@email.com "Blake" --code BLAKE10 --link "h
 - Only you can approve, reject or assign. Pressing approve twice never sends a post twice.
 - Every affiliate caption gets their own link and code, plus the required `#ad` disclosure.
 - Uploading requires agreeing that ONEWRLD may edit and repost the clip (recorded with the time).
+
+## 19. Affiliate Portal: put the website live (about 20 minutes, once)
+**1. Supabase keys.** Supabase → Project Settings → **API**:
+- Send Claude the **Project URL** and the **anon public** key. Both are public by design (every visitor's browser needs them); the database rules protect the data. Claude puts them in `portal/config.js`.
+- **Never send the `service_role` key to anyone.** Put it in your `.env` on the PC only:
+```
+SUPABASE_URL=https://YOUR-PROJECT-REF.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=paste-the-service_role-key-here
+```
+**2. Create the portal tables** (from section 18, if not done): `python -m onewrld portal setup`
+
+**3. Netlify:** Add new site → **Import an existing project** → GitHub → `Onewrld/onewrld-engine`. Netlify reads `netlify.toml` and publishes the `portal` folder; no build settings needed. You get an address like `onewrld-team.netlify.app` (you can rename it in Site settings).
+
+**4. Supabase login settings** (Authentication section; labels may differ slightly):
+- **Email** sign-in on.
+- **Allow new users to sign up: OFF.** Logins are created only by `portal invite`.
+- **URL configuration:** Site URL = your Netlify address; add it to Redirect URLs too.
+
+**5. Invite people** (this now also creates their login):
+```
+python -m onewrld portal invite you@email.com "Adam"
+python -m onewrld portal owner you@email.com
+python -m onewrld portal invite blake@email.com "Blake" --code BLAKE10 --link "https://onewrld.us/?ref=blake"
+```
+They open the Netlify address, type their email, tap the link in their inbox, and they're in.
+
+**Free plan limits:** 50 MB per clip, 1 GB total. After upgrading to Supabase Pro, change `maxUploadMB` in `portal/config.js` (ask Claude) and the limit goes up.
+
+**Note:** the Approve screen stays empty until the next module (your PC turning uploads into finished posts).

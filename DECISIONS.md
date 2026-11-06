@@ -260,7 +260,19 @@ Every decision is written as Decision / Why / What if. Newest at the bottom.
 - **Rights:** uploading requires consent to edit and repost, stored with a timestamp.
 - **Tests:** 16 attack tests run as the people who'd break the rules (strangers, other affiliates, logged-out visitors, direct writes). They refuse to run against a real Supabase database.
 
-## D-061: Video storage for the portal (OPEN: owner to choose)
+## D-061: Video storage for the portal (RESOLVED 2026-11-06: Supabase free now, Pro later)
 - **Facts (third-party sources, 2026):** the Supabase free plan has 1 GB of storage and a 50 MB per-file cap (phone clips are often bigger). Supabase Pro: $25/month, 100 GB. Cloudflare R2: 10 GB free per month, then $0.015/GB, no download fees; needs a card on file.
 - **Recommendation:** R2 (about $0 vs. $300/year). It adds one small signing function on Netlify, which is on me to build.
 - **What if:** If R2 setup is a problem, Supabase Pro works with the same screens; only the storage adapter changes.
+
+## D-062: Supabase Storage on the free plan now, Pro when ready (owner, 2026-11-06)
+- **Decision:** Build on Supabase Storage. Same system on free and Pro, so upgrading is one click with zero code changes. R2 would have meant rebuilding storage at the upgrade.
+- **Free-plan limits:** 50 MB per file, 1 GB total. The site refuses bigger files with a plain message (`maxUploadMB` in `portal/config.js`). The engine will delete raw uploads once downloaded, and finished posts once posted, to stay under 1 GB.
+- **Uploads are resumable** (the "tus" standard, sent to Supabase's direct storage address in 6 MB chunks), so a dropped phone connection continues instead of starting over.
+
+## D-063: Portal website design
+- **Static site** (HTML, CSS, plain JavaScript; no build step) on Netlify, published from `portal/` by `netlify.toml`.
+- **Libraries are pinned copies stored with the site** (`portal/vendor/`: supabase-js 2.45.4, tus-js-client 4.2.3, from npm with their licenses), so nothing loads from outside servers. Strict security headers allow scripts from the site itself only.
+- **Login by emailed link, no self-signup:** `portal invite` creates the login through Supabase's admin API (service key in `.env` only); the site never creates accounts.
+- **Screens:** affiliates get Upload · Ready to post · My uploads. Owner gets Approve (video, hook, caption, tick people or "Everyone", Approve & send / Reject with reason) · Uploads · Team · Upload.
+- **Tested** in headless Chrome with a fake Supabase (13 checks: approve sends the right people, reject sends the reason, affiliates can't see Approve, the caption has #ad, mark posted, the size limit), plus static checks (no secret keys in the site, every button maps to a real database function).
