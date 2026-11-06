@@ -53,6 +53,7 @@ Affiliate Portal:
   portal owner EMAIL     make yourself the owner (after your first login)
   portal members         who's invited, who has logged in
   portal deactivate EMAIL / portal activate EMAIL
+  portal sync            edit new affiliate uploads into posts for your Approve screen
 
 Demos (nothing real is ever posted):
   demo-action            simulate one outward action directly
@@ -503,6 +504,16 @@ def _cmd_portal(settings, args) -> int:
     from onewrld import db, portal
 
     with db.connect(settings) as conn:
+        if args.action == "sync":
+            from onewrld import notify, portal_sync
+            stats = portal_sync.sync(settings, conn, limit=args.limit)
+            notify.flush_alert_emails(settings, conn)
+            if stats["ready"] or stats["failed"]:
+                print(f"{stats['ready']} upload(s) turned into posts for your Approve screen, "
+                      f"{stats['failed']} couldn't be edited (see `alerts`).")
+            else:
+                print("No new uploads.")
+            return 0 if not stats["failed"] else 1
         if args.action == "setup":
             applied = portal.setup(conn)
             print("Portal set up: " + ", ".join(applied) if applied else "Portal already set up.")
@@ -595,7 +606,8 @@ def main(argv: list[str] | None = None) -> int:
     sl.add_argument("--minutes", type=int, default=120)
     sl.add_argument("--drop", action="store_true", help="include new-drop tease formats")
     pt = sub.add_parser("portal", help="affiliate portal: setup, invite, owner, members")
-    pt.add_argument("action", choices=["setup", "invite", "owner", "members", "activate", "deactivate"])
+    pt.add_argument("action", choices=["setup", "invite", "owner", "members", "activate", "deactivate", "sync"])
+    pt.add_argument("--limit", type=int, default=5)
     pt.add_argument("email", nargs="?")
     pt.add_argument("name", nargs="?")
     pt.add_argument("--code")

@@ -33,10 +33,10 @@ const fake = (role) => `
       { id: ids.blake, display_name: "Blake", role: "affiliate", active: true, discount_code: "BLAKE10" },
       { id: ids.jess, display_name: "Jess", role: "affiliate", active: true, discount_code: "JESS10" }],
     packs: [
-      { id: 11, hook_text: "480 GSM. Feel that weight.", caption_base: "Embroidered on the chest. Printed across the back.", video_key: "packs/11.mp4", created_at: "2026-11-06T18:00:00Z", status: "pending", submission: { affiliate_id: ids.blake, original_name: "gym_fit.mp4" } },
+      { id: 11, hook_text: "480 GSM. Feel that weight.", caption_base: "Embroidered on the chest. Printed across the back.", video_key: "packs/11.mp4", alt_video_keys: ["11/alt1.mp4", "11/alt2.mp4"], created_at: "2026-11-06T18:00:00Z", status: "pending", submission: { affiliate_id: ids.blake, original_name: "gym_fit.mp4" } },
       { id: 12, hook_text: "Wide from the knee down.", caption_base: "Heavy cotton sweats. Cut wide from the knee down.", video_key: "packs/12.mp4", created_at: "2026-11-06T19:00:00Z", status: "pending", submission: { affiliate_id: ids.jess, original_name: "stack.mov" } }],
     assignments: [
-      { id: 7, affiliate_id: ids.blake, status: "assigned", posted_url: null, assigned_at: "2026-11-06T20:00:00Z",
+      { id: 7, affiliate_id: ids.blake, status: "assigned", posted_url: null, assigned_at: "2026-11-06T20:00:00Z", video_key: "11/alt1.mp4", hook_text: "Look closer at the stitching.",
         caption_final: "Embroidered on the chest. Printed across the back.\\n\\nhttps://onewrld.us/?ref=blake\\nCode BLAKE10 at checkout.\\n\\n#ad I earn a commission on sales from my link.",
         pack: { video_key: "packs/11.mp4", hook_text: "480 GSM. Feel that weight." } }],
     submissions: [{ id: 1, affiliate_id: ids.blake, original_name: "gym_fit.mp4", status: "ready", created_at: "2026-11-06T17:00:00Z" }],
@@ -86,6 +86,7 @@ async function pageAs(role) {
   await page.waitForSelector("[data-pack]");
   assert((await page.locator("[data-pack]").count()) === 2, "owner sees 2 posts waiting for approval");
   assert(await page.locator("text=480 GSM. Feel that weight.").isVisible(), "hook shown on the card");
+  assert(await page.locator("text=3 versions").count() === 1, "owner is told each person gets a different version");
   const first = page.locator("[data-pack='11']");
   assert(await first.locator("input[type=checkbox]:checked").count() === 1, "uploader is ticked by default");
   await page.screenshot({ path: path.join(outDir, "1_owner_approve.png"), fullPage: true });

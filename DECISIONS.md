@@ -282,3 +282,13 @@ Every decision is written as Decision / Why / What if. Newest at the bottom.
 - **Secret keys:** the new `sb_secret_` keys are not JWTs, and Supabase rejects them as a Bearer token. `portal invite` sends them in the `apikey` header only (legacy JWT keys still go in both). Tested.
 - **Uploads** also send the publishable key as `apikey` with the user's session token.
 - **What if:** If logins or uploads fail once live, check the browser console error and `python -m onewrld diagnose`. The headers are the first suspect.
+
+## D-065: Every post gets 3 versions; people sent the same post get different versions
+- **Decision:** Each upload is edited into a main version + 2 alternates, each with a different approved hook, look and crop. `approve_pack` hands them out in rotation: person 1 the main, person 2 the first alternate, and so on.
+- **Why:** Several affiliates posting the identical video can get flagged as unoriginal by TikTok and Instagram (the same rules as D-008). Different versions keep each post distinct, with no extra work for the owner (still one press to approve).
+- **Security:** affiliates can only open the version assigned to them (storage rule updated). Tested.
+
+## D-066: Portal sync runs on the owner's PC, a few uploads at a time
+- **How:** `portal sync` claims up to 5 new uploads (two runs can never take the same one), edits them with the existing Video Studio, uploads the versions, creates the pack, then deletes the raw upload from Supabase (the free plan has 1 GB; the original stays on the PC). Uploads stuck mid-edit for 60+ minutes are retried.
+- **Failures:** network trouble means try again next run; anything else marks the upload "couldn't be edited" and raises an alert (emailed if email is set up).
+- **Scheduling:** Windows Task Scheduler every 15 minutes (RUNBOOK 20). If the PC is off, uploads wait. Later, a small server can run it around the clock.

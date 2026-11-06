@@ -69,3 +69,8 @@ Every failure gets: what happened · root cause · fix · regression test that p
 - **Root cause (my judgment call, not a bug):** I had already flagged still-photo videos as the weakest content type (D-048), then built them anyway to have *something* before the shoot. A static product image, a slow zoom, text and silence reads as a cheap slideshow: below a premium brand, and the kind of low-effort content platforms push down. I also only ever reviewed output on test patterns and stand-in shapes, never on real ONEWRLD footage, so I couldn't judge quality.
 - **Fix:** Photo-to-video is OFF by default (`batch --photos` to opt in). The engine now only processes real video clips.
 - **Rule added:** No output type ships as default until the owner has seen a real example and approved the look. Quality bar is set by the owner's reference videos, not by passing technical checks.
+
+## M-012 (2026-11-06): Stuck-upload check used the upload time instead of the edit start time (caught by a test before shipping)
+- **Root cause:** `portal sync` treated an upload as "stuck mid-edit" if it was UPLOADED over an hour ago. A clip uploaded yesterday would be re-claimed the moment editing started, so two runs could edit it at once.
+- **Fix:** a `claimed_at` timestamp is set when editing starts, and the check uses that.
+- **Test:** `test_stuck_uploads_are_retried_and_claims_never_overlap` (an old upload that just started editing is never taken twice).

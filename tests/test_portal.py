@@ -51,7 +51,7 @@ def pdb(db_settings):
         c.execute(f"ALTER DEFAULT PRIVILEGES IN SCHEMA {schema} GRANT ALL ON TABLES TO anon, authenticated")
         c.execute(f"ALTER DEFAULT PRIVILEGES IN SCHEMA {schema} GRANT ALL ON SEQUENCES TO anon, authenticated")
     with db.connect(db_settings) as conn:
-        assert portal.setup(conn, schema) == ["0001_portal.sql", "0002_storage.sql"]
+        assert portal.setup(conn, schema) == ["0001_portal.sql", "0002_storage.sql", "0003_versions.sql"]
         assert portal.setup(conn, schema) == []          # safe to run again
         try:
             yield conn, schema
@@ -334,3 +334,22 @@ def test_new_secret_keys_go_in_apikey_header_only(make_settings):
         return _Resp()
     portal.create_login(s, "a@b.com", opener)
     assert seen["apikey"] == "sb_secret_abc123" and "authorization" not in seen
+
+
+
+def test_each_person_gets_a_different_version(team):
+    conn, s, ids = team
+    portal.invite(conn, "mike@example.com", "Mike", schema=s)
+    ids["mike"] = signup(conn, "mike@example.com")
+    pk = _pack(conn, s, ids["blake"])
+    conn.execute(f"UPDATE {s}.packs SET alt_video_keys = %s, alt_hooks = %s WHERE id=%s",
+                 (["packs/alt1.mp4", "packs/alt2.mp4"], ["Hook two.", "Hook three."], pk))
+    for k in ("packs/1.mp4", "packs/alt1.mp4", "packs/alt2.mp4"):
+        _put(conn, "packs", k)
+    with as_user(conn, ids["boss"]):
+        conn.execute(f"SELECT {s}.approve_pack(%s, %s)", (pk, [ids["blake"], ids["jess"], ids["mike"]]))
+    rows = conn.execute(f"SELECT affiliate_id, video_key FROM {s}.assignments WHERE pack_id=%s", (pk,)).fetchall()
+    assert sorted(r["video_key"] for r in rows) == ["packs/1.mp4", "packs/alt1.mp4", "packs/alt2.mp4"]
+    mine = {r["affiliate_id"]: r["video_key"] for r in rows}
+    with as_user(conn, ids["jess"]):            # Jess can open only HER version
+        assert _visible(conn, "packs") == [mine[ids["jess"]]]

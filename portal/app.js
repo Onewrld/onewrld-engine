@@ -167,7 +167,7 @@ function uploadOne(file, productHandle, note, list) {
 // ---------- affiliates: ready to post ----------
 async function showReady() {
   const { data, error } = await sb.from("assignments")
-    .select("id,status,caption_final,posted_url,assigned_at,pack:packs(video_key,hook_text)")
+    .select("id,status,caption_final,posted_url,assigned_at,video_key,hook_text,pack:packs(video_key,hook_text)")
     .eq("affiliate_id", me.user.id).order("assigned_at", { ascending: false });
   if (error) throw error;
   const todo = data.filter((a) => a.status !== "posted");
@@ -178,8 +178,9 @@ async function showReady() {
   for (const a of data) {
     const video = el("video", { controls: true, playsinline: true, preload: "metadata" });
     const dl = el("a", { class: "button" }, "Download video");
-    signed("packs", a.pack.video_key).then((u) => { if (u) video.src = u; });
-    signed("packs", a.pack.video_key, true).then((u) => { if (u) dl.href = u; });
+    const key = a.video_key || a.pack.video_key;   // each person gets their own version
+    signed("packs", key).then((u) => { if (u) video.src = u; });
+    signed("packs", key, true).then((u) => { if (u) dl.href = u; });
     const url = el("input", { type: "url", placeholder: "Link to your post (optional)", value: a.posted_url || "" });
     const done = el("button", { class: a.status === "posted" ? "secondary" : "primary", onclick: async () => {
       const { data: ok, error: e } = await sb.rpc("mark_posted", { p_assignment: a.id, p_url: url.value.trim() });
@@ -218,7 +219,7 @@ async function team() {
 
 async function showApprove() {
   const [{ data: packs, error }, people] = await Promise.all([
-    sb.from("packs").select("id,hook_text,caption_base,video_key,created_at,submission:submissions(affiliate_id,original_name)")
+    sb.from("packs").select("id,hook_text,caption_base,video_key,alt_video_keys,created_at,submission:submissions(affiliate_id,original_name)")
       .eq("status", "pending").order("created_at", { ascending: true }),
     team()]);
   if (error) throw error;
@@ -239,6 +240,8 @@ async function showApprove() {
       el("p", { class: "muted" }, `From ${name[uploader] || "the team"} · ${pk.submission?.original_name || ""}`),
       video,
       pk.hook_text ? el("p", { class: "hook" }, pk.hook_text) : null,
+      (pk.alt_video_keys || []).length ? el("p", { class: "muted" },
+        `${1 + pk.alt_video_keys.length} versions: each person you send it to gets a different one.`) : null,
       el("div", { class: "caption" }, pk.caption_base),
       el("div", { class: "row" }, el("strong", {}, "Send to:"),
         el("button", { class: "secondary", onclick: () => boxes.forEach((b) => { b.querySelector("input").checked = true; }) }, "Everyone")),

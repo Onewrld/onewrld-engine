@@ -332,3 +332,18 @@ They open the Netlify address, type their email, tap the link in their inbox, an
 **Free plan limits:** 50 MB per clip, 1 GB total. After upgrading to Supabase Pro, change `maxUploadMB` in `portal/config.js` (ask Claude) and the limit goes up.
 
 **Note:** the Approve screen stays empty until the next module (your PC turning uploads into finished posts).
+
+## 20. Affiliate Portal: turning uploads into posts
+```
+python -m onewrld portal sync
+```
+For each new upload, your PC downloads it, makes **3 versions** (different hook, look and crop), checks the quality, uploads them, and adds the post to your **Approve** screen with an approved caption. Then it deletes the raw upload from Supabase to save space; your PC keeps the original in `media\portal\`. When you send one post to several people, each gets a different version.
+
+**Run it automatically every 15 minutes** (one paste in PowerShell; change the folder if yours differs):
+```
+schtasks /create /sc minute /mo 15 /tn "ONEWRLD portal sync" /tr "cmd /c cd /d C:\Users\pulld\onewrld && python -m onewrld portal sync"
+```
+Stop it: `schtasks /delete /tn "ONEWRLD portal sync" /f`. It only runs while your PC is on.
+
+**If an upload shows "couldn't be edited":** `python -m onewrld alerts` says why. The usual cause is no approved caption for that product yet: run `captions review` (or `hooks review`), then `portal sync` again.
+**Free plan:** finished versions must be under 50 MB each. Clips are capped at 30 seconds, which keeps them well under.

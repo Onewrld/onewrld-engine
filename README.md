@@ -42,6 +42,7 @@ Content, distribution, attribution and paid-ads system for ONEWRLD.
 | `db/portal/` | Affiliate Portal tables, security rules and button functions (Supabase). |
 | `portal/` | The Affiliate Portal website (Netlify). `config.js` holds the public Supabase settings. |
 | `netlify.toml` | Tells Netlify to publish `portal/`, with strict security headers. |
+| `src/onewrld/portal_sync.py` | Turns affiliate uploads into finished 3-version posts for approval. |
 | `src/onewrld/portal.py` | Portal setup, invites, owner, members. |
 | `src/onewrld/videos.py` | Connects the studio to the database and job queue; uses your approved captions. |
 | `src/onewrld/handlers/` | The code for each kind of job (demo jobs for now). |
