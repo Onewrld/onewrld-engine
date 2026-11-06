@@ -245,3 +245,22 @@ Every decision is written as Decision / Why / What if. Newest at the bottom.
 - **Formats:** each has a location, length, filming time, products, suited hook types and a shot list. Priority right now: talking clips (one talk becomes many posts), then Fall of Icarus product details, packing, the full set, the gym.
 - **Shot lists** fit the time you have, skip products that are out of stock, group by location (15 min allowed per location change), and suggest unique, product-matched hooks per format.
 - **What if:** If a format underperforms, Phase 6 drops it down the priority list.
+
+## D-059: Affiliate Portal architecture (owner request, 2026-11-06)
+- **Decision:** A private website on Netlify (static pages, no server to maintain), with Supabase for logins (emailed sign-in links), the portal database and security. The owner's PC runs the existing engine to edit uploads into finished posts and send them back. Up to 20 affiliates. No AI key (captions come from the approved library).
+- **Why:** It reuses everything already built (Video Studio, hooks, captions, quality gate) and services the owner already has; the screens stay dead simple (upload / approve + assign / post).
+- **What if:** If the PC is off, uploads wait. A $5 to $8/month server can process around the clock later.
+
+## D-060: Portal security model
+- **Invite-only:** a login gets a profile only if its email was invited, so uninvited people see and do nothing.
+- **Row Level Security** on every portal table: affiliates see only their own uploads and assigned posts; only the owner approves or assigns.
+- **Buttons are database functions** (`approve_pack`, `reject_pack`, `mark_posted`) that check who's calling, so even a bug in the website can't let an affiliate approve or assign.
+- Supabase's default grants to logged-in users are revoked first, then only what's needed is granted back.
+- **FTC:** every affiliate caption automatically ends with `#ad I earn a commission on sales from my link.`, plus their link and code.
+- **Rights:** uploading requires consent to edit and repost, stored with a timestamp.
+- **Tests:** 16 attack tests run as the people who'd break the rules (strangers, other affiliates, logged-out visitors, direct writes). They refuse to run against a real Supabase database.
+
+## D-061: Video storage for the portal (OPEN: owner to choose)
+- **Facts (third-party sources, 2026):** the Supabase free plan has 1 GB of storage and a 50 MB per-file cap (phone clips are often bigger). Supabase Pro: $25/month, 100 GB. Cloudflare R2: 10 GB free per month, then $0.015/GB, no download fees; needs a card on file.
+- **Recommendation:** R2 (about $0 vs. $300/year). It adds one small signing function on Netlify, which is on me to build.
+- **What if:** If R2 setup is a problem, Supabase Pro works with the same screens; only the storage adapter changes.

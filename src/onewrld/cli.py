@@ -47,6 +47,13 @@ Distribution (Phase 5):
   kit                    export today's approved posts as a folder to post from (--date YYYY-MM-DD)
   posted N               mark post N as posted (after you post it by hand)  --url optional
 
+Affiliate Portal:
+  portal setup           create the portal tables + security rules in Supabase (once)
+  portal invite EMAIL "Name" --code CODE --link URL    let an affiliate log in
+  portal owner EMAIL     make yourself the owner (after your first login)
+  portal members         who's invited, who has logged in
+  portal deactivate EMAIL / portal activate EMAIL
+
 Demos (nothing real is ever posted):
   demo-action            simulate one outward action directly
   demo-job "text"        queue a fake post job (run `worker` to process it)
@@ -492,6 +499,41 @@ def _cmd_shotlist(settings, minutes: int, include_drop: bool) -> int:
     return 0
 
 
+def _cmd_portal(settings, args) -> int:
+    from onewrld import db, portal
+
+    with db.connect(settings) as conn:
+        if args.action == "setup":
+            applied = portal.setup(conn)
+            print("Portal set up: " + ", ".join(applied) if applied else "Portal already set up.")
+            return 0
+        if args.action == "invite":
+            if not args.email or not args.name:
+                print('Usage: python -m onewrld portal invite EMAIL "Name" --code CODE --link URL')
+                return 1
+            portal.invite(conn, args.email, args.name, args.code, args.link)
+            print(f"Invited {args.email}. They can log in to the portal with that email.")
+            return 0
+        if args.action == "owner":
+            ok = portal.make_owner(conn, args.email or "")
+            print("You're the owner now." if ok else
+                  "No login with that email yet: log in to the portal once, then run this again.")
+            return 0 if ok else 1
+        if args.action in ("activate", "deactivate"):
+            ok = portal.set_active(conn, args.email or "", args.action == "activate")
+            print(f"{args.email}: {args.action}d." if ok else "No login with that email yet.")
+            return 0 if ok else 1
+        rows = portal.members(conn)
+    if not rows:
+        print('Nobody invited yet. python -m onewrld portal invite EMAIL "Name" --code CODE')
+    for r in rows:
+        state = ("owner" if r["role"] == "owner" else "affiliate") if r["has_logged_in"] else "invited"
+        if r["active"] is False:
+            state += " (deactivated)"
+        print(f"  {r['email']:<32} {r['display_name']:<16} {r['discount_code'] or '-':<12} {state}")
+    return 0
+
+
 def _cmd_test() -> int:
     return subprocess.call([sys.executable, "-m", "pytest", "-q", "-rs"])
 
@@ -547,6 +589,12 @@ def main(argv: list[str] | None = None) -> int:
     sl = sub.add_parser("shotlist", help="build a shoot-day shot list")
     sl.add_argument("--minutes", type=int, default=120)
     sl.add_argument("--drop", action="store_true", help="include new-drop tease formats")
+    pt = sub.add_parser("portal", help="affiliate portal: setup, invite, owner, members")
+    pt.add_argument("action", choices=["setup", "invite", "owner", "members", "activate", "deactivate"])
+    pt.add_argument("email", nargs="?")
+    pt.add_argument("name", nargs="?")
+    pt.add_argument("--code")
+    pt.add_argument("--link")
     sub.add_parser("quiz", help="voice quiz")
     sub.add_parser("voice", help="show your voice profile")
     cp = sub.add_parser("captions", help="caption bank: import, review, list, score")
@@ -626,6 +674,8 @@ def main(argv: list[str] | None = None) -> int:
             return _cmd_hooks(settings, max(1, args.limit))
         if args.command == "shotlist":
             return _cmd_shotlist(settings, max(30, min(args.minutes, 480)), args.drop)
+        if args.command == "portal":
+            return _cmd_portal(settings, args)
         if args.command == "quiz":
             return _cmd_quiz(settings)
         if args.command == "voice":

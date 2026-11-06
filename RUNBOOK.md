@@ -274,3 +274,31 @@ python -m onewrld shotlist --minutes 120
 ```
 This prints a checklist (and saves it in `media\shotlists\`): which formats to film, in what order (home, then outside, then the gym), every shot, and two opening-line ideas for each.
 Optional: name clips starting with their code (`F06_1.mp4`) so the system learns which formats sell.
+
+## 18. Affiliate Portal: setup (database part)
+The portal is a private website where affiliates upload clips, you approve the finished posts and pick who gets them, and they post. This section sets up its database and security. The website screens come next.
+
+**One time:**
+```
+python -m onewrld portal setup
+```
+**Invite yourself, then create your login in Supabase:**
+```
+python -m onewrld portal invite you@email.com "Adam"
+```
+In Supabase: **Authentication → Users → Add user** with that same email. Then:
+```
+python -m onewrld portal owner you@email.com
+```
+**Invite an affiliate** (their Enlistly code and link go on every post they get):
+```
+python -m onewrld portal invite blake@email.com "Blake" --code BLAKE10 --link "https://onewrld.us/?ref=blake"
+```
+`python -m onewrld portal members` shows everyone. `portal deactivate EMAIL` cuts someone off instantly (they keep nothing new; they see nothing new).
+
+**What the security rules guarantee** (all tested):
+- Only invited emails get an account. Anyone else who logs in sees nothing and can upload nothing.
+- Affiliates see only their own uploads and the posts sent to them, not each other.
+- Only you can approve, reject or assign. Pressing approve twice never sends a post twice.
+- Every affiliate caption gets their own link and code, plus the required `#ad` disclosure.
+- Uploading requires agreeing that ONEWRLD may edit and repost the clip (recorded with the time).

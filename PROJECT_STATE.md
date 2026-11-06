@@ -1,14 +1,14 @@
 # PROJECT_STATE.md
 
-_Last updated: 2026-11-05_
+_Last updated: 2026-11-06_
 
 ## Where we are
 | | |
 |---|---|
-| Phase | 5: Distribution |
+| Phase | Affiliate Portal (owner priority, 2026-11-06) |
 | Done | Phase 0 plan. Module 1.1 (skeleton and safety). Module 1.2 (database, job queue, worker, alerts, database kill switch). Module 1.3 (email alerts with caps, log rotation, `phase1-check`; 43 tests pass) |
-| Current | Hook & Format Library built. Owner: captions import → hooks review; shotlist for the weekend shoot |
-| Next | 5.2: automatic posting adapter (posting service + Meta direct), cost approval first. 4B.2 talking-clip atomizer after the shoot and the Python 3.13 fix |
+| Current | Portal P1 (database + security, 16 attack tests) built. Owner: decide storage (R2 recommended), run `portal setup` |
+| Next | Portal P2: the website (upload / approve + assign / my posts) on Netlify. P3: engine processes uploads into packs |
 | Blockers | **Checkout converts 1 in ~19** (store audit 2026-11-05): fix shipping surprise, turn on abandoned-checkout emails, check wallets, phone test purchase. Highest-value fix in the business right now |
 
 ## Phase checklist
@@ -19,6 +19,7 @@ _Last updated: 2026-11-05_
 - [ ] Phase 4B: Volume Engine. [x] 4B.1 product photos to video, inbox batch, product-matched captions, similarity check · [ ] 4B.2 talking-clip atomizer
 - [ ] Phase 5: Distribution. [x] 5.1 platforms, scheduler (caps, spacing, variant spread), captions per platform, tracked links, approval, posting kit, adapter interface · [ ] 5.2 automatic posting
 - [ ] Phase 4: Attribution (after 5, before the drop)
+- [ ] Affiliate Portal. [x] P1 database, invite-only logins, RLS, approve/assign/posted functions, FTC disclosure, consent · [ ] P2 website · [ ] P3 engine sync (uploads → packs)
 - [ ] Phase 6: Learning Loop and Dashboard
 - [ ] Phase 7: Paid Ads
 - [ ] Phase 8: Hardening
@@ -31,6 +32,7 @@ _Last updated: 2026-11-05_
 - Meta app and tokens, posting-layer API key, X API keys: Phase 5
 
 ## Open questions for owner
+- **Video storage for the portal: Cloudflare R2 (~$0, recommended) or Supabase Pro ($25/mo)?** (D-061)
 - Photo-to-video: off after owner rejected it (M-011); reference video formats still wanted
 - Personal/founder handles (brand handles found: IG @onewrld.us, TikTok @onewrld.US, X @onewrldus, YT @onewrldus)
 - Is the font in the logo/graphics the same as the website font (Assistant)?
