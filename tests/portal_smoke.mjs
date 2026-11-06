@@ -145,7 +145,35 @@ async function pageAs(role) {
   assert(errors.length === 0, "no page errors (real library): " + errors.join("; "));
 }
 
-// 4. Logged out: login screen sends a link without creating accounts
+// 4. Login errors show the real reason (M-013)
+{
+  const ctx = await browser.newContext({ viewport: { width: 420, height: 900 } });
+  const page = await ctx.newPage();
+  await page.route("**/config.js", (r) => r.fulfill({ contentType: "text/javascript", body:
+    fs.readFileSync(path.join(root, "config.js"), "utf8").replace(/supabaseUrl: "[^"]*"/, 'supabaseUrl: "https://fake.supabase.co"') }));
+  await page.addInitScript(() => {
+    const errs = [{ message: "email rate limit exceeded" }, { message: "Signups not allowed for otp" }];
+    window.__FAKE_SUPABASE__ = {
+      auth: { getSession: async () => ({ data: { session: null } }), onAuthStateChange: () => ({}),
+              signInWithOtp: async () => ({ error: errs.shift() || null }), signOut: async () => {} },
+    };
+  });
+  await page.goto(base);
+  await page.waitForSelector("text=Team login");
+  await page.fill("input[type=email]", "adam@example.com");
+  await page.click("text=Send me a login link");
+  await page.waitForSelector("text=Too many login emails");
+  assert(true, "rate limit error says 'too many emails', not 'not on the team'");
+  await page.click("text=Send me a login link");
+  await page.waitForSelector("text=isn't on the team");
+  assert(true, "a real 'not invited' error still says so");
+  await page.click("text=Send me a login link");
+  await page.waitForSelector("text=Check your email");
+  assert(true, "success says check your email");
+  await ctx.close();
+}
+
+// 5. Logged out: login screen sends a link without creating accounts
 {
   const { page } = await pageAs(null);
   await page.addInitScript(() => {});

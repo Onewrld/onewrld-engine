@@ -88,10 +88,22 @@ function showLogin() {
     const { error } = await sb.auth.signInWithOtp({ email: email.value.trim(),
       options: { shouldCreateUser: false, emailRedirectTo: location.origin + location.pathname } });
     btn.disabled = false;
-    msg.textContent = error ? "That email isn't on the team. Ask Adam for an invite." : "Check your email and tap the link to log in.";
+    msg.textContent = error ? loginError(error) : "Check your email and tap the link to log in.";
     msg.className = error ? "error" : "muted";
   } }, el("h1", {}, "Team login"), el("label", {}, "Your email"), email, el("p"), btn, msg);
   app.replaceChildren(form);
+}
+
+// Show the REAL reason a login email failed (M-013): only "not invited" errors say so.
+function loginError(error) {
+  const m = (error && (error.message || error.code || String(error))) || "";
+  if (/signups? not allowed|user not found|not allowed for otp|otp_disabled/i.test(m))
+    return "That email isn't on the team. Ask Adam for an invite.";
+  if (/rate limit|security purposes|too many|over_email_send_rate_limit/i.test(m))
+    return "Too many login emails were sent recently (the limit is a few per hour). Wait a while, then try once.";
+  if (/redirect/i.test(m))
+    return "Login is not set up for this web address yet (Supabase URL settings). Tell Adam.";
+  return "Couldn't send the login email: " + m;
 }
 
 function showNotOnTeam(email) {

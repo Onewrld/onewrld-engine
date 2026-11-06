@@ -74,3 +74,9 @@ Every failure gets: what happened · root cause · fix · regression test that p
 - **Root cause:** `portal sync` treated an upload as "stuck mid-edit" if it was UPLOADED over an hour ago. A clip uploaded yesterday would be re-claimed the moment editing started, so two runs could edit it at once.
 - **Fix:** a `claimed_at` timestamp is set when editing starts, and the check uses that.
 - **Test:** `test_stuck_uploads_are_retried_and_claims_never_overlap` (an old upload that just started editing is never taken twice).
+
+## M-013 (2026-11-06): Portal login showed "isn't on the team" for every error
+- **What happened:** The owner (a confirmed owner account) got "That email isn't on the team" at login.
+- **Root cause:** The login screen turned ANY error from Supabase into that message. The real error was most likely the email rate limit (2 login emails/hour on Supabase's built-in sender) after several tries, or the redirect settings.
+- **Fix:** The login screen shows the real reason: not invited / too many emails / web address not set up / the exact error. Browser test checks each.
+- **Lesson:** never replace an error with a guess; show the reason (same idea as `diagnose`).
