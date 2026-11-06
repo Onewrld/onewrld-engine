@@ -322,3 +322,15 @@ def test_create_login_existing_user_is_fine_and_unconfigured_skips(make_settings
     assert portal.create_login(s, "a@b.com", opener) == "exists"
     from dataclasses import replace
     assert portal.create_login(replace(s, supabase_url="", supabase_service_key=""), "a@b.com") == "skipped"
+
+
+
+def test_new_secret_keys_go_in_apikey_header_only(make_settings):
+    s = make_settings(SUPABASE_URL="https://abc.supabase.co", SUPABASE_SERVICE_ROLE_KEY="sb_secret_abc123")
+    seen = {}
+
+    def opener(req, timeout=None):
+        seen.update({k.lower(): v for k, v in req.header_items()})
+        return _Resp()
+    portal.create_login(s, "a@b.com", opener)
+    assert seen["apikey"] == "sb_secret_abc123" and "authorization" not in seen

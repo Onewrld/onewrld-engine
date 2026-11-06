@@ -23,6 +23,7 @@ def test_no_secret_keys_in_the_website():
         assert "service_role" not in text.lower() or "never" in text.lower(), path
         # JWT-looking strings (how Supabase keys look) must never be committed in the site
         assert not re.search(r"eyJ[A-Za-z0-9_-]{20,}\.[A-Za-z0-9_-]{20,}\.", text), path
+        assert "sb_secret_" not in text or "never" in text.lower(), path       # new-style secret key
 
 
 def test_scripts_are_local_files_that_exist():

@@ -276,3 +276,9 @@ Every decision is written as Decision / Why / What if. Newest at the bottom.
 - **Login by emailed link, no self-signup:** `portal invite` creates the login through Supabase's admin API (service key in `.env` only); the site never creates accounts.
 - **Screens:** affiliates get Upload · Ready to post · My uploads. Owner gets Approve (video, hook, caption, tick people or "Everyone", Approve & send / Reject with reason) · Uploads · Team · Upload.
 - **Tested** in headless Chrome with a fake Supabase (13 checks: approve sends the right people, reject sends the reason, affiliates can't see Approve, the caption has #ad, mark posted, the size limit), plus static checks (no secret keys in the site, every button maps to a real database function).
+
+## D-064: supabase-js upgraded to 2.116.0 for Supabase's new key format
+- **Why:** The owner's project uses Supabase's newer keys (`sb_publishable_...` public, `sb_secret_...` secret). supabase-js 2.45.4 predates them; 2.116.0 (Sep 2026) handles them. Checked in the library's code, since supabase.com was unreachable from the build session.
+- **Secret keys:** the new `sb_secret_` keys are not JWTs, and Supabase rejects them as a Bearer token. `portal invite` sends them in the `apikey` header only (legacy JWT keys still go in both). Tested.
+- **Uploads** also send the publishable key as `apikey` with the user's session token.
+- **What if:** If logins or uploads fail once live, check the browser console error and `python -m onewrld diagnose`. The headers are the first suspect.

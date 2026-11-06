@@ -143,7 +143,7 @@ function uploadOne(file, productHandle, note, list) {
     const up = new tus.Upload(file, {
       endpoint: `${storageHost}/storage/v1/upload/resumable`,
       retryDelays: [0, 3000, 5000, 10000, 20000],
-      headers: { authorization: `Bearer ${session.access_token}`, "x-upsert": "false" },
+      headers: { authorization: `Bearer ${session.access_token}`, apikey: cfg.supabaseAnonKey, "x-upsert": "false" },
       uploadDataDuringCreation: true,
       removeFingerprintOnSuccess: true,
       metadata: { bucketName: "uploads", objectName, contentType: file.type || "video/mp4", cacheControl: "3600" },
@@ -291,7 +291,7 @@ function setCount(tab, n) {
   if (c) c.textContent = n ? String(n) : "";
 }
 
-if (!cfg || cfg.supabaseUrl.includes("YOUR-PROJECT")) {
+if (!cfg || cfg.supabaseUrl.includes("YOUR-PROJECT") || cfg.supabaseAnonKey.startsWith("YOUR-")) {
   app.replaceChildren(el("div", { class: "card" }, el("h1", {}, "Almost ready"),
     el("p", {}, "Fill in portal/config.js with your Supabase URL and anon key (RUNBOOK section 19).")));
 } else {

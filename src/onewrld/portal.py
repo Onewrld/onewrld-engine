@@ -78,12 +78,16 @@ def create_login(settings: Settings, email: str, opener=urllib.request.urlopen) 
     (no Supabase admin key configured)."""
     if not (settings.supabase_url and settings.supabase_service_key):
         return "skipped"
+    key = settings.supabase_service_key
+    headers = {"apikey": key, "Content-Type": "application/json"}
+    if not key.startswith("sb_secret_"):
+        # Legacy service_role keys are JWTs and go in both headers. New sb_secret_ keys
+        # are NOT JWTs: Supabase rejects them as a Bearer token, so apikey header only.
+        headers["Authorization"] = f"Bearer {key}"
     req = urllib.request.Request(
         f"{settings.supabase_url}/auth/v1/admin/users", method="POST",
         data=json.dumps({"email": email.strip().lower(), "email_confirm": True}).encode(),
-        headers={"apikey": settings.supabase_service_key,
-                 "Authorization": f"Bearer {settings.supabase_service_key}",
-                 "Content-Type": "application/json"})
+        headers=headers)
     try:
         with opener(req, timeout=20):
             return "created"

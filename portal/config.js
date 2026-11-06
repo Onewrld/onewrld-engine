@@ -1,11 +1,11 @@
 // Portal settings. These two Supabase values are PUBLIC by design (every visitor's browser
 // needs them); the security rules in the database are what protect the data.
-// NEVER put the "service_role" key here: that one is secret and stays in your .env only.
+// NEVER put the "service_role" or "sb_secret_..." key here: secret, .env only.
 window.PORTAL_CONFIG = {
   // Supabase → Project Settings → API → "Project URL"
-  supabaseUrl: "https://YOUR-PROJECT-REF.supabase.co",
-  // Supabase → Project Settings → API → "anon public" key
-  supabaseAnonKey: "YOUR-ANON-PUBLIC-KEY",
+  supabaseUrl: "https://ocgcjpgnheqnhgajfbub.supabase.co",
+  // Supabase → Project Settings → API Keys → "publishable" key (public by design)
+  supabaseAnonKey: "sb_publishable_XWMKLJpipcMsVwlPCfslMA_JluJyuXw",
 
   // Free Supabase plan: 50 MB per file. After upgrading to Pro, raise this (e.g. 2000).
   maxUploadMB: 50,

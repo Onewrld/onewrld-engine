@@ -7,7 +7,7 @@ _Last updated: 2026-11-06_
 |---|---|
 | Phase | Affiliate Portal (owner priority, 2026-11-06) |
 | Done | Phase 0 plan. Module 1.1 (skeleton and safety). Module 1.2 (database, job queue, worker, alerts, database kill switch). Module 1.3 (email alerts with caps, log rotation, `phase1-check`; 43 tests pass) |
-| Current | Portal P2 (website + video storage rules) built and browser-tested. Owner: put it live (RUNBOOK 19) |
+| Current | Portal website configured for the owner's Supabase (URL + publishable key). Owner: secret key in .env, `portal setup`, Netlify import, Supabase login settings (RUNBOOK 19) |
 | Next | Portal P3: the PC downloads uploads, edits them into finished posts (hook + caption), puts them in the Approve queue; cleans storage |
 | Blockers | **Checkout converts 1 in ~19** (store audit 2026-11-05): fix shipping surprise, turn on abandoned-checkout emails, check wallets, phone test purchase. Highest-value fix in the business right now |
 

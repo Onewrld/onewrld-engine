@@ -72,7 +72,7 @@ async function pageAs(role) {
   const ctx = await browser.newContext({ viewport: { width: 420, height: 900 }, permissions: ["clipboard-read", "clipboard-write"] });
   const page = await ctx.newPage();
   await page.route("**/config.js", (r) => r.fulfill({ contentType: "text/javascript", body:
-    fs.readFileSync(path.join(root, "config.js"), "utf8").replace("https://YOUR-PROJECT-REF.supabase.co", "https://fake.supabase.co") }));
+    fs.readFileSync(path.join(root, "config.js"), "utf8").replace(/supabaseUrl: "[^"]*"/, 'supabaseUrl: "https://fake.supabase.co"') }));
   if (role) await page.addInitScript(fake(role));
   const errors = [];
   page.on("pageerror", (e) => errors.push(e.message));
@@ -132,7 +132,19 @@ async function pageAs(role) {
   assert(errors.length === 0, "no page errors (affiliate): " + errors.join("; "));
 }
 
-// 3. Logged out: login screen sends a link without creating accounts
+// 3. The real Supabase library loads and builds a client from the real config (no network)
+{
+  const { page, errors } = await pageAs(null);
+  const ok = await page.evaluate(() => {
+    const c = window.supabase.createClient(window.PORTAL_CONFIG.supabaseUrl, "sb_publishable_test");
+    return typeof window.supabase.createClient === "function" && typeof c.auth.signInWithOtp === "function"
+      && typeof c.storage.from === "function";
+  });
+  assert(ok, "real supabase-js library loads and creates a client");
+  assert(errors.length === 0, "no page errors (real library): " + errors.join("; "));
+}
+
+// 4. Logged out: login screen sends a link without creating accounts
 {
   const { page } = await pageAs(null);
   await page.addInitScript(() => {});

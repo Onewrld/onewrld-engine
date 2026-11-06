@@ -306,10 +306,11 @@ python -m onewrld portal invite blake@email.com "Blake" --code BLAKE10 --link "h
 ## 19. Affiliate Portal: put the website live (about 20 minutes, once)
 **1. Supabase keys.** Supabase → Project Settings → **API**:
 - Send Claude the **Project URL** and the **anon public** key. Both are public by design (every visitor's browser needs them); the database rules protect the data. Claude puts them in `portal/config.js`.
-- **Never send the `service_role` key to anyone.** Put it in your `.env` on the PC only:
+- (Done 2026-11-06: the Project URL and publishable key are in `portal/config.js`.)
+- **Never send the secret key to anyone.** In Supabase → Project Settings → **API Keys**, copy the **secret** key (starts with `sb_secret_`). Put it in your `.env` on the PC only:
 ```
-SUPABASE_URL=https://YOUR-PROJECT-REF.supabase.co
-SUPABASE_SERVICE_ROLE_KEY=paste-the-service_role-key-here
+SUPABASE_URL=https://ocgcjpgnheqnhgajfbub.supabase.co
+SUPABASE_SERVICE_ROLE_KEY=sb_secret_paste-it-here
 ```
 **2. Create the portal tables** (from section 18, if not done): `python -m onewrld portal setup`
 
