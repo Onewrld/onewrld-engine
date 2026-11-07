@@ -54,6 +54,7 @@ Affiliate Portal:
   portal members         who's invited, who has logged in
   portal deactivate EMAIL / portal activate EMAIL
   portal sync            edit new affiliate uploads into posts for your Approve screen
+  portal retry           re-queue uploads that couldn't be edited (then run portal sync)
 
 Demos (nothing real is ever posted):
   demo-action            simulate one outward action directly
@@ -514,6 +515,11 @@ def _cmd_portal(settings, args) -> int:
             else:
                 print("No new uploads.")
             return 0 if not stats["failed"] else 1
+        if args.action == "retry":
+            from onewrld import portal_sync
+            n = portal_sync.retry_failed(conn)
+            print(f"{n} upload(s) back in line. Now run: python -m onewrld portal sync")
+            return 0
         if args.action == "setup":
             applied = portal.setup(conn)
             print("Portal set up: " + ", ".join(applied) if applied else "Portal already set up.")
@@ -606,7 +612,7 @@ def main(argv: list[str] | None = None) -> int:
     sl.add_argument("--minutes", type=int, default=120)
     sl.add_argument("--drop", action="store_true", help="include new-drop tease formats")
     pt = sub.add_parser("portal", help="affiliate portal: setup, invite, owner, members")
-    pt.add_argument("action", choices=["setup", "invite", "owner", "members", "activate", "deactivate", "sync"])
+    pt.add_argument("action", choices=["setup", "invite", "owner", "members", "activate", "deactivate", "sync", "retry"])
     pt.add_argument("--limit", type=int, default=5)
     pt.add_argument("email", nargs="?")
     pt.add_argument("name", nargs="?")

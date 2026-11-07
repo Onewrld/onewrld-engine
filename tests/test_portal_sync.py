@@ -151,3 +151,24 @@ def test_storage_errors_are_classified():
         portal_sync.Storage("https://a.supabase.co", "k", denied).delete("uploads", "x")
     with pytest.raises(PermanentError, match="SUPABASE_URL"):
         portal_sync.Storage("", "", denied)
+
+
+
+def test_sync_refuses_when_database_is_behind(team, db_settings, monkeypatch):  # M-014
+    from onewrld import db
+    conn, s, ids = team
+    sub = _upload(conn, s, ids["blake"])
+    monkeypatch.setattr(db, "pending_migrations", lambda settings, c: [type("F", (), {"name": "0006_x.sql"})()])
+    with pytest.raises(PermanentError, match="migrate"):
+        portal_sync.sync(db_settings, conn, FakeStorage(), schema=s)
+    row = conn.execute(f"SELECT status FROM {s}.submissions WHERE id=%s", (sub,)).fetchone()
+    assert row["status"] == "uploaded"                  # untouched: not claimed, not failed
+
+
+def test_retry_puts_failed_uploads_back(team):
+    conn, s, ids = team
+    a = _upload(conn, s, ids["blake"], "a.mp4")
+    conn.execute(f"UPDATE {s}.submissions SET status='failed', error='x' WHERE id=%s", (a,))
+    assert portal_sync.retry_failed(conn, s) == 1
+    row = conn.execute(f"SELECT status, error FROM {s}.submissions WHERE id=%s", (a,)).fetchone()
+    assert row["status"] == "uploaded" and row["error"] is None

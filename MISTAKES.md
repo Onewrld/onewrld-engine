@@ -80,3 +80,9 @@ Every failure gets: what happened · root cause · fix · regression test that p
 - **Root cause:** The login screen turned ANY error from Supabase into that message. The real error was most likely the email rate limit (2 login emails/hour on Supabase's built-in sender) after several tries, or the redirect settings.
 - **Fix:** The login screen shows the real reason: not invited / too many emails / web address not set up / the exact error. Browser test checks each.
 - **Lesson:** never replace an error with a guess; show the reason (same idea as `diagnose`).
+
+## M-014 (2026-11-07): First real portal sync failed: "column format_id of relation asset does not exist"
+- **Root cause:** The owner's database never got migrations 0005 (posts) and 0006 (hooks/formats); my step lists for those modules didn't repeat `migrate`. Sync then ran new code against an old database, and the upload was marked "couldn't be edited". (The alert email arrived, so alerting works.)
+- **Fix:** `portal sync` now checks for pending migrations FIRST and refuses with "run migrate" before touching any upload. New `portal retry` re-queues failed uploads.
+- **Rule:** every step list that pulls new code includes `python -m onewrld migrate`.
+- **Tests:** `test_sync_refuses_when_database_is_behind`, `test_retry_puts_failed_uploads_back`.

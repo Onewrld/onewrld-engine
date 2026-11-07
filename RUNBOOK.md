@@ -334,6 +334,7 @@ They open the Netlify address, type their email, tap the link in their inbox, an
 **Note:** the Approve screen stays empty until the next module (your PC turning uploads into finished posts).
 
 ## 20. Affiliate Portal: turning uploads into posts
+**After every `git pull`, run `python -m onewrld migrate` first.** Sync refuses to run if the database is behind.
 ```
 python -m onewrld portal sync
 ```
@@ -345,5 +346,5 @@ schtasks /create /sc minute /mo 15 /tn "ONEWRLD portal sync" /tr "cmd /c cd /d C
 ```
 Stop it: `schtasks /delete /tn "ONEWRLD portal sync" /f`. It only runs while your PC is on.
 
-**If an upload shows "couldn't be edited":** `python -m onewrld alerts` says why. The usual cause is no approved caption for that product yet: run `captions review` (or `hooks review`), then `portal sync` again.
+**If an upload shows "couldn't be edited":** `python -m onewrld alerts` says why. The usual cause is no approved caption for that product yet: run `captions review` (or `hooks review`), then `python -m onewrld portal retry` and `portal sync` again.
 **Free plan:** finished versions must be under 50 MB each. Clips are capped at 30 seconds, which keeps them well under.

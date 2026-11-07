@@ -124,6 +124,14 @@ def _caption_text(conn: psycopg.Connection, render: dict) -> str:
     return (render["spec"] or {}).get("caption") or ""
 
 
+def retry_failed(conn: psycopg.Connection, schema: str = "public", sub_id: int | None = None) -> int:
+    """Put uploads that couldn't be edited back in line for the next sync."""
+    cur = conn.execute(
+        f"""UPDATE {schema}.submissions SET status='uploaded', error=NULL, claimed_at=NULL
+            WHERE status='failed' AND (%s::bigint IS NULL OR id = %s)""", (sub_id, sub_id))
+    return cur.rowcount
+
+
 def process_one(settings: Settings, conn: psycopg.Connection, store: Storage, sub: dict,
                 schema: str = "public") -> int:
     """Edit one upload into a pack. Returns the pack id."""
@@ -164,6 +172,12 @@ def process_one(settings: Settings, conn: psycopg.Connection, store: Storage, su
 
 def sync(settings: Settings, conn: psycopg.Connection, store: Storage | None = None,
          schema: str = "public", limit: int = BATCH) -> dict:
+    from onewrld import db
+    # Preflight (M-014): never touch an upload if the engine's own database is behind.
+    pending = db.pending_migrations(settings, conn)
+    if pending:
+        raise PermanentError("Your database needs updating first. Run: python -m onewrld migrate "
+                             f"(missing: {', '.join(p.name for p in pending)})")
     store = store or Storage(settings.supabase_url, settings.supabase_service_key)
     studio.require_ffmpeg()
     stats = {"ready": 0, "failed": 0}
