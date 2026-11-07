@@ -1,14 +1,14 @@
 # PROJECT_STATE.md
 
-_Last updated: 2026-11-06_
+_Last updated: 2026-11-07_
 
 ## Where we are
 | | |
 |---|---|
 | Phase | Affiliate Portal (owner priority, 2026-11-06) |
 | Done | Phase 0 plan. Module 1.1 (skeleton and safety). Module 1.2 (database, job queue, worker, alerts, database kill switch). Module 1.3 (email alerts with caps, log rotation, `phase1-check`; 43 tests pass) |
-| Current | Portal P3 built: uploads → 3-version posts in the Approve screen. Owner: run `portal sync` (or schedule it, RUNBOOK 20) and test with one real upload |
-| Next | First real end-to-end test with the owner's account; then storage cleanup of posted packs, and back to the roadmap (5.2 automatic posting, 4 sales tracking) |
+| Current | P3 verified on the owner's PC (first real upload → 3 versions → Approve, 2026-11-07). P4 high volume built (D-067): one-at-a-time approve + Approve all, automatic handout with queue limits, autopilot sync, one version per affiliate, affiliate queue, waiting-posts email, `portal status` |
+| Next | Owner: pull, migrate, `portal setup`, `portal autopilot on`, try the new Approve screen. Then: Supabase custom SMTP (Gmail) so affiliates can get login emails; storage cleanup of posted packs; roadmap (5.2 automatic posting, 4 sales tracking) |
 | Blockers | **Checkout converts 1 in ~19** (store audit 2026-11-05): fix shipping surprise, turn on abandoned-checkout emails, check wallets, phone test purchase. Highest-value fix in the business right now |
 
 ## Phase checklist
@@ -19,7 +19,7 @@ _Last updated: 2026-11-06_
 - [ ] Phase 4B: Volume Engine. [x] 4B.1 product photos to video, inbox batch, product-matched captions, similarity check · [ ] 4B.2 talking-clip atomizer
 - [ ] Phase 5: Distribution. [x] 5.1 platforms, scheduler (caps, spacing, variant spread), captions per platform, tracked links, approval, posting kit, adapter interface · [ ] 5.2 automatic posting
 - [ ] Phase 4: Attribution (after 5, before the drop)
-- [ ] Affiliate Portal. [x] P1 database, invite-only logins, RLS, approve/assign/posted functions, FTC disclosure, consent · [x] P2 website (upload/approve+send/ready to post), storage rules, logins via invite (free plan, 50 MB/clip) · [x] P3 sync: uploads → 3 versions → Approve screen; versions rotate across affiliates; raw uploads cleaned
+- [ ] Affiliate Portal. [x] P1 database, invite-only logins, RLS, approve/assign/posted functions, FTC disclosure, consent · [x] P2 website (upload/approve+send/ready to post), storage rules, logins via invite (free plan, 50 MB/clip) · [x] P3 sync: uploads → 3 versions → Approve screen; versions rotate across affiliates; raw uploads cleaned (verified on owner PC) · [x] P4 high volume: bulk/keyboard approve, automatic handout + queue limits, autopilot, up to 10 versions, affiliate queue, waiting email, status
 - [ ] Phase 6: Learning Loop and Dashboard
 - [ ] Phase 7: Paid Ads
 - [ ] Phase 8: Hardening

@@ -51,7 +51,7 @@ def pdb(db_settings):
         c.execute(f"ALTER DEFAULT PRIVILEGES IN SCHEMA {schema} GRANT ALL ON TABLES TO anon, authenticated")
         c.execute(f"ALTER DEFAULT PRIVILEGES IN SCHEMA {schema} GRANT ALL ON SEQUENCES TO anon, authenticated")
     with db.connect(db_settings) as conn:
-        assert portal.setup(conn, schema) == ["0001_portal.sql", "0002_storage.sql", "0003_versions.sql"]
+        assert portal.setup(conn, schema) == ["0001_portal.sql", "0002_storage.sql", "0003_versions.sql", "0004_volume.sql"]
         assert portal.setup(conn, schema) == []          # safe to run again
         try:
             yield conn, schema
@@ -353,3 +353,102 @@ def test_each_person_gets_a_different_version(team):
     mine = {r["affiliate_id"]: r["video_key"] for r in rows}
     with as_user(conn, ids["jess"]):            # Jess can open only HER version
         assert _visible(conn, "packs") == [mine[ids["jess"]]]
+
+
+# --- high volume: bulk approve, automatic handout, queues (D-067) ----------------------
+
+def _versions(conn, s, pk, n):
+    """Give a pack n versions in total (main + n-1 alternates)."""
+    conn.execute(f"UPDATE {s}.packs SET alt_video_keys=%s, alt_hooks=%s WHERE id=%s",
+                 ([f"{pk}/alt{i}.mp4" for i in range(1, n)], [f"Hook {i}." for i in range(1, n)], pk))
+
+
+def _crew(conn, s, ids, names):
+    for n in names:
+        portal.invite(conn, f"{n}@example.com", n.title(), code=f"{n.upper()}10", schema=s)
+        ids[n] = signup(conn, f"{n}@example.com")
+
+
+def _open(conn, s):
+    rows = conn.execute(f"""SELECT affiliate_id, count(*) AS n FROM {s}.assignments
+                            WHERE status='assigned' GROUP BY 1""").fetchall()
+    return {r["affiliate_id"]: r["n"] for r in rows}
+
+
+def test_bulk_approve_hands_out_every_version_once_uploader_first(team):
+    conn, s, ids = team
+    _crew(conn, s, ids, ["mike", "nia"])
+    pk = _pack(conn, s, ids["jess"])
+    _versions(conn, s, pk, 3)
+    with as_user(conn, ids["boss"]):
+        res = conn.execute(f"SELECT {s}.approve_packs(%s) AS r", ([pk],)).fetchone()["r"]
+        again = conn.execute(f"SELECT {s}.approve_packs(%s) AS r", ([pk],)).fetchone()["r"]
+    assert res == {"approved": 1, "sent": 3} and again == {"approved": 0, "sent": 0}
+    rows = conn.execute(f"SELECT affiliate_id, video_key FROM {s}.assignments WHERE pack_id=%s", (pk,)).fetchall()
+    assert len({r["video_key"] for r in rows}) == 3                       # 3 people, 3 different versions
+    assert {r["affiliate_id"]: r["video_key"] for r in rows}[ids["jess"]] == "packs/1.mp4"   # filmed it: main
+    assert ids["boss"] not in {r["affiliate_id"] for r in rows}            # the owner isn't handed posts
+
+
+def test_handout_is_even_and_respects_each_persons_limit(team):
+    conn, s, ids = team
+    _crew(conn, s, ids, ["mike", "nia"])
+    conn.execute(f"UPDATE {s}.profiles SET max_open=2 WHERE role='affiliate'")
+    packs = [_pack(conn, s, ids["blake"]) for _ in range(6)]
+    for pk in packs:
+        _versions(conn, s, pk, 2)
+    with as_user(conn, ids["boss"]):
+        conn.execute(f"SELECT {s}.approve_packs(%s)", (packs,))
+    # Blake gets his own 6 clips regardless of limit; the 6 alternates spread over the others, max 2 each
+    q = _open(conn, s)
+    assert q[ids["blake"]] == 6 and q[ids["jess"]] == q[ids["mike"]] == q[ids["nia"]] == 2
+    # Posting one frees a slot: the queue refills from approved posts with unused versions
+    left = conn.execute(f"""SELECT count(*) AS n FROM {s}.packs p WHERE (SELECT count(*) FROM {s}.assignments a
+                            WHERE a.pack_id=p.id) < 2""").fetchone()["n"]
+    assert left == 0                                   # 12 versions, 12 handed out
+    extra = _pack(conn, s, ids["blake"])
+    _versions(conn, s, extra, 3)
+    with as_user(conn, ids["boss"]):
+        conn.execute(f"SELECT {s}.approve_packs(%s)", ([extra],))
+    assert _open(conn, s)[ids["jess"]] == 2            # full: nothing more until she posts
+    aid = conn.execute(f"SELECT id FROM {s}.assignments WHERE affiliate_id=%s LIMIT 1", (ids["jess"],)).fetchone()["id"]
+    with as_user(conn, ids["jess"]):
+        assert conn.execute(f"SELECT {s}.mark_posted(%s, '') AS ok", (aid,)).fetchone()["ok"]
+    assert _open(conn, s)[ids["jess"]] == 2            # refilled straight away
+    assert conn.execute(f"SELECT count(*) AS n FROM {s}.assignments WHERE pack_id=%s AND affiliate_id=%s",
+                        (extra, ids["jess"])).fetchone()["n"] == 1
+
+
+def test_limit_zero_pauses_a_person_and_raising_it_refills(team):
+    conn, s, ids = team
+    pk = _pack(conn, s, ids["blake"])
+    _versions(conn, s, pk, 2)
+    with as_user(conn, ids["boss"]):
+        conn.execute(f"SELECT {s}.set_max_open(%s, 0)", (ids["jess"],))
+        conn.execute(f"SELECT {s}.approve_packs(%s)", ([pk],))
+    assert ids["jess"] not in _open(conn, s)
+    with as_user(conn, ids["boss"]):
+        assert conn.execute(f"SELECT {s}.set_max_open(%s, 3) AS n", (ids["jess"],)).fetchone()["n"] == 1
+    assert _open(conn, s)[ids["jess"]] == 1
+
+
+def test_bulk_reject_and_only_owner_can_bulk(team):
+    conn, s, ids = team
+    a, b = _pack(conn, s, ids["blake"]), _pack(conn, s, ids["blake"])
+    for fn, args in (("approve_packs", ([a],)), ("reject_packs", ([a], "x")), ("set_max_open", (ids["blake"], 50))):
+        with pytest.raises(psycopg.errors.RaiseException, match="only the owner"):
+            with as_user(conn, ids["blake"]):
+                conn.execute(f"SELECT {s}.{fn}({', '.join(['%s'] * len(args))})", args)
+    with as_user(conn, ids["boss"]):
+        assert conn.execute(f"SELECT {s}.reject_packs(%s, 'too dark') AS n", ([a, b],)).fetchone()["n"] == 2
+        assert conn.execute(f"SELECT {s}.approve_packs(%s) AS r", ([a],)).fetchone()["r"]["approved"] == 0
+    assert conn.execute(f"SELECT count(*) AS n FROM {s}.assignments").fetchone()["n"] == 0
+
+
+@pytest.mark.parametrize("call", ["give_version(1, '00000000-0000-0000-0000-000000000000')", "fill_queues()"])
+def test_internal_handout_functions_are_not_callable_from_the_site(team, call):
+    conn, s, ids = team
+    for who in (ids["blake"], ids["boss"]):
+        with pytest.raises(psycopg.errors.InsufficientPrivilege):
+            with as_user(conn, who):
+                conn.execute(f"SELECT {s}.{call}")

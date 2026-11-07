@@ -33,12 +33,15 @@ const fake = (role) => `
       { id: ids.blake, display_name: "Blake", role: "affiliate", active: true, discount_code: "BLAKE10" },
       { id: ids.jess, display_name: "Jess", role: "affiliate", active: true, discount_code: "JESS10" }],
     packs: [
-      { id: 11, hook_text: "480 GSM. Feel that weight.", caption_base: "Embroidered on the chest. Printed across the back.", video_key: "packs/11.mp4", alt_video_keys: ["11/alt1.mp4", "11/alt2.mp4"], created_at: "2026-11-06T18:00:00Z", status: "pending", submission: { affiliate_id: ids.blake, original_name: "gym_fit.mp4" } },
+      { id: 11, hook_text: "480 GSM. Feel that weight.", caption_base: "Embroidered on the chest. Printed across the back.", video_key: "packs/11.mp4", alt_video_keys: ["11/alt1.mp4", "11/alt2.mp4"], alt_hooks: ["Look closer at the stitching.", "Zip it up. Notice the weight."], created_at: "2026-11-06T18:00:00Z", status: "pending", submission: { affiliate_id: ids.blake, original_name: "gym_fit.mp4" } },
+      { id: 13, hook_text: "Cut wide.", caption_base: "Heavy cotton.", video_key: "packs/13.mp4", created_at: "2026-11-06T19:30:00Z", status: "pending", submission: { affiliate_id: ids.jess, original_name: "c.mov" } },
+      { id: 14, hook_text: "Zip it up.", caption_base: "Heavy cotton.", video_key: "packs/14.mp4", created_at: "2026-11-06T19:40:00Z", status: "pending", submission: { affiliate_id: ids.blake, original_name: "d.mov" } },
       { id: 12, hook_text: "Wide from the knee down.", caption_base: "Heavy cotton sweats. Cut wide from the knee down.", video_key: "packs/12.mp4", created_at: "2026-11-06T19:00:00Z", status: "pending", submission: { affiliate_id: ids.jess, original_name: "stack.mov" } }],
     assignments: [
       { id: 7, affiliate_id: ids.blake, status: "assigned", posted_url: null, assigned_at: "2026-11-06T20:00:00Z", video_key: "11/alt1.mp4", hook_text: "Look closer at the stitching.",
         caption_final: "Embroidered on the chest. Printed across the back.\\n\\nhttps://onewrld.us/?ref=blake\\nCode BLAKE10 at checkout.\\n\\n#ad I earn a commission on sales from my link.",
         pack: { video_key: "packs/11.mp4", hook_text: "480 GSM. Feel that weight." } }],
+    assignments_all: [],
     submissions: [{ id: 1, affiliate_id: ids.blake, original_name: "gym_fit.mp4", status: "ready", created_at: "2026-11-06T17:00:00Z" }],
   };
   function query(table) {
@@ -60,7 +63,11 @@ const fake = (role) => `
       signOut: async () => { calls.push(["signOut"]); },
     },
     from: query,
-    rpc: async (fn, args) => { calls.push(["rpc", fn, args]); return { data: fn === "approve_pack" ? args.p_affiliates.length : true, error: null }; },
+    rpc: async (fn, args) => { calls.push(["rpc", fn, args]);
+      const data = fn === "approve_pack" ? args.p_affiliates.length
+        : fn === "approve_packs" ? { approved: args.p_packs.length, sent: args.p_packs.length * 2 }
+        : fn === "reject_packs" ? args.p_packs.length : true;
+      return { data, error: null }; },
     storage: { from: () => ({ createSignedUrl: async () => ({ data: { signedUrl: "data:video/mp4;base64," }, error: null }) }) },
   };
 })();`;
@@ -80,27 +87,51 @@ async function pageAs(role) {
   return { page, errors };
 }
 
-// 1. Owner: approve queue, tick people, approve & send, reject
+// 1. Owner: one post at a time, versions, approve (auto handout), reject with a reason,
+//    keyboard, choose people, approve all, team limits
 {
   const { page, errors } = await pageAs("boss");
   await page.waitForSelector("[data-pack]");
-  assert((await page.locator("[data-pack]").count()) === 2, "owner sees 2 posts waiting for approval");
+  assert((await page.locator("[data-pack]").count()) === 1, "owner reviews one post at a time");
+  assert(await page.locator("text=1 of 4").count() === 1, "progress shows 1 of 4");
   assert(await page.locator("text=480 GSM. Feel that weight.").isVisible(), "hook shown on the card");
-  assert(await page.locator("text=3 versions").count() === 1, "owner is told each person gets a different version");
-  const first = page.locator("[data-pack='11']");
-  assert(await first.locator("input[type=checkbox]:checked").count() === 1, "uploader is ticked by default");
+  assert(await page.locator("text=3 versions, one per person").count() === 1, "owner sees the versions");
+  await page.locator("button.chip:text('V2')").click();
+  assert(await page.locator(".hook").innerText() === "Look closer at the stitching.", "switching version shows its hook");
   await page.screenshot({ path: path.join(outDir, "1_owner_approve.png"), fullPage: true });
-  await first.locator("text=Everyone").click();
-  await first.locator("text=Approve & send").click();
+  await page.locator(".decide >> text=Approve").click();
+  await page.waitForFunction(() => window.__CALLS__.some((c) => c[1] === "approve_packs"));
+  const call = await page.evaluate(() => window.__CALLS__.find((c) => c[1] === "approve_packs"));
+  assert(JSON.stringify(call[2].p_packs) === "[11]", "Approve sends pack 11 for automatic handout");
+  await page.waitForSelector("text=1 of 3");
+  await page.locator(".decide >> text=Reject").click();
+  await page.locator("button.chip:text('Weak hook')").click();
+  await page.waitForFunction(() => window.__CALLS__.some((c) => c[1] === "reject_packs"));
+  const rej = await page.evaluate(() => window.__CALLS__.find((c) => c[1] === "reject_packs"));
+  assert(rej[2].p_reason === "Weak hook" && rej[2].p_packs[0] === 13, "one-tap reject reason");
+  await page.waitForSelector("text=1 of 2");
+  await page.keyboard.press("s");
+  await page.waitForSelector("text=2 of 2");
+  assert(true, "S key skips to the next post");
+  await page.locator("text=Choose people instead").click();
+  await page.locator("[data-pack] >> text=Everyone").click();
+  await page.locator("text=Approve & send to these").click();
   await page.waitForFunction(() => window.__CALLS__.some((c) => c[1] === "approve_pack"));
-  const call = await page.evaluate(() => window.__CALLS__.find((c) => c[1] === "approve_pack"));
-  assert(call[2].p_pack === 11 && call[2].p_affiliates.length === 2, "approve sends pack 11 to both affiliates");
-  page.on("dialog", (d) => d.accept("too dark"));
-  await page.locator("[data-pack='12'] >> text=Reject").click();
-  await page.waitForFunction(() => window.__CALLS__.some((c) => c[1] === "reject_pack"));
-  const rej = await page.evaluate(() => window.__CALLS__.find((c) => c[1] === "reject_pack"));
-  assert(rej[2].p_reason === "too dark", "reject sends the reason");
-  assert(await page.locator("text=Nothing waiting").count() === 0 || true, "queue updates");
+  const pick = await page.evaluate(() => window.__CALLS__.find((c) => c[1] === "approve_pack"));
+  assert(pick[2].p_affiliates.length === 2, "hand-picking people still works");
+  page.on("dialog", (d) => d.accept());
+  await page.locator("text=Approve all (1)").click();
+  await page.waitForSelector("text=Nothing waiting");
+  const all = await page.evaluate(() => window.__CALLS__.filter((c) => c[1] === "approve_packs").length);
+  assert(all === 2, "Approve all clears the rest of the queue in one call");
+  assert(await page.locator("text=This session: 3 approved").count() === 1, "session summary shown");
+  await page.locator("nav button[data-tab=team]").click();
+  await page.waitForSelector("[data-person]");
+  await page.locator("[data-person] >> button.chip:text('+')").first().click();
+  await page.waitForFunction(() => window.__CALLS__.some((c) => c[1] === "set_max_open"));
+  const cap = await page.evaluate(() => window.__CALLS__.find((c) => c[1] === "set_max_open"));
+  assert(cap[2].p_max === 6, "owner raises a person's queue limit from the Team tab");
+  await page.screenshot({ path: path.join(outDir, "4_owner_team.png"), fullPage: true });
   assert(errors.length === 0, "no page errors (owner): " + errors.join("; "));
 }
 
@@ -111,6 +142,7 @@ async function pageAs(role) {
   assert(await page.locator("nav >> text=Approve").count() === 0, "affiliate has no Approve tab");
   await page.locator("nav button[data-tab=ready]").click();
   await page.waitForSelector(".caption");
+  assert(await page.locator("text=posted in the last 7 days").count() === 1, "weekly posted count shown");
   assert((await page.locator(".caption").innerText()).includes("#ad"), "caption includes #ad disclosure");
   await page.screenshot({ path: path.join(outDir, "2_affiliate_ready.png"), fullPage: true });
   await page.locator("text=Copy caption").click();

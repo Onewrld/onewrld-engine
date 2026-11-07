@@ -53,6 +53,21 @@ def setup(conn: psycopg.Connection, schema: str = "public") -> list[str]:
     return applied
 
 
+def pending(conn: psycopg.Connection, schema: str = "public") -> list[str]:
+    """Portal SQL files not yet applied to `schema` (run `portal setup` to apply them)."""
+    done = {r["name"] for r in conn.execute("SELECT name FROM schema_migrations")}
+    return [f.name for f in _files() if f"portal:{schema}:{f.name}" not in done]
+
+
+def set_cap(conn: psycopg.Connection, email: str, n: int, schema: str = "public") -> bool:
+    """How many posts this person may have waiting at once (0 = paused). Refills queues."""
+    cur = conn.execute(f"UPDATE {schema}.profiles SET max_open=%s WHERE email=%s",
+                       (max(0, min(50, n)), email.strip().lower()))
+    if cur.rowcount:
+        conn.execute(f"SELECT {schema}.fill_queues()")
+    return bool(cur.rowcount)
+
+
 def invite(conn: psycopg.Connection, email: str, name: str, code: str | None = None,
            link: str | None = None, schema: str = "public") -> None:
     """Allow this email to log in as an affiliate. Re-inviting updates their details."""

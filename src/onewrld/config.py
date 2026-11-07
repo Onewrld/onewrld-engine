@@ -39,6 +39,10 @@ class Settings:
     # SECRET (it bypasses all security rules): .env only, never in the website or git.
     supabase_url: str = ""
     supabase_service_key: str = field(default="", repr=False)
+    # High-volume portal (D-067): most versions made per upload (one per affiliate, 3 to 10),
+    # and the portal's web address for "posts waiting" emails.
+    portal_max_versions: int = 6
+    portal_url: str = ""
 
     @property
     def email_configured(self) -> bool:
@@ -85,6 +89,8 @@ def load_settings(root: Path | None = None, env_file: Path | None = None) -> Set
         smtp_port=_int_setting("SMTP_PORT", 465),
         supabase_url=os.environ.get("SUPABASE_URL", "").strip().rstrip("/"),
         supabase_service_key=os.environ.get("SUPABASE_SERVICE_ROLE_KEY", "").strip(),
+        portal_max_versions=max(3, min(10, _int_setting("PORTAL_MAX_VERSIONS", 6))),
+        portal_url=os.environ.get("PORTAL_URL", "").strip(),
     )
 
 

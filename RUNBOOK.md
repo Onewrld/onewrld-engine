@@ -340,11 +340,21 @@ python -m onewrld portal sync
 ```
 For each new upload, your PC downloads it, makes **3 versions** (different hook, look and crop), checks the quality, uploads them, and adds the post to your **Approve** screen with an approved caption. Then it deletes the raw upload from Supabase to save space; your PC keeps the original in `media\portal\`. When you send one post to several people, each gets a different version.
 
-**Run it automatically every 15 minutes** (one paste in PowerShell; change the folder if yours differs):
+**After this update (high volume, D-067), once:** `python -m onewrld portal setup` (adds the automatic handout to Supabase).
+
+**Run it automatically (autopilot):**
 ```
-schtasks /create /sc minute /mo 15 /tn "ONEWRLD portal sync" /tr "cmd /c cd /d C:\Users\pulld\onewrld && python -m onewrld portal sync"
+python -m onewrld portal autopilot on
 ```
-Stop it: `schtasks /delete /tn "ONEWRLD portal sync" /f`. It only runs while your PC is on.
+Windows now runs sync every 10 minutes while your PC is on, with no window popping up. Each run clears everything waiting (up to 50 uploads), and two runs never overlap. Stop: `python -m onewrld portal autopilot off`. Check: `python -m onewrld portal status`.
+
+**Approving at volume:** the Approve tab shows one post at a time. Tap **Approve** (or press A), **Reject** + a reason (R), or **Skip** (S). Tap V1, V2… to watch each version. **Approve all** clears the whole queue. You don't pick people: each post goes to the person who filmed it, and its other versions go to whoever has the fewest posts waiting. "Choose people instead" is there when you want to pick by hand.
+
+**Queue limits:** each person has at most 5 posts waiting at once. When they mark one posted, the next one appears by itself. Change it on the **Team** tab (− / +) or `python -m onewrld portal cap EMAIL 8`. 0 pauses someone.
+
+**Versions per upload:** one per affiliate, at least 3, at most 6. Change the max with `PORTAL_MAX_VERSIONS=` in `.env` (3 to 10). More versions = longer editing on your PC.
+
+**"Posts waiting" email:** add your portal address to `.env` as `PORTAL_URL=https://your-site.netlify.app` and the email links straight to it (at most one an hour).
 
 **If an upload shows "couldn't be edited":** `python -m onewrld alerts` says why. The usual cause is no approved caption for that product yet: run `captions review` (or `hooks review`), then `python -m onewrld portal retry` and `portal sync` again.
 **Free plan:** finished versions must be under 50 MB each. Clips are capped at 30 seconds, which keeps them well under.

@@ -55,6 +55,9 @@ Affiliate Portal:
   portal deactivate EMAIL / portal activate EMAIL
   portal sync            edit new affiliate uploads into posts for your Approve screen
   portal retry           re-queue uploads that couldn't be edited (then run portal sync)
+  portal status          the whole pipeline: uploads, posts waiting, each person's queue
+  portal autopilot on    your PC edits new uploads every 10 minutes by itself (off: stop)
+  portal cap EMAIL N     most posts one person can have waiting at once (0 = pause them)
 
 Demos (nothing real is ever posted):
   demo-action            simulate one outward action directly
@@ -509,7 +512,9 @@ def _cmd_portal(settings, args) -> int:
             from onewrld import notify, portal_sync
             stats = portal_sync.sync(settings, conn, limit=args.limit)
             notify.flush_alert_emails(settings, conn)
-            if stats["ready"] or stats["failed"]:
+            if stats.get("busy"):
+                print("Another sync is already running (autopilot?). Nothing to do.")
+            elif stats["ready"] or stats["failed"]:
                 print(f"{stats['ready']} upload(s) turned into posts for your Approve screen, "
                       f"{stats['failed']} couldn't be edited (see `alerts`).")
             else:
@@ -520,6 +525,43 @@ def _cmd_portal(settings, args) -> int:
             n = portal_sync.retry_failed(conn)
             print(f"{n} upload(s) back in line. Now run: python -m onewrld portal sync")
             return 0
+        if args.action == "status":
+            from onewrld import portal_sync
+            st = portal_sync.status(conn)
+            u, p = st["uploads"], st["packs"]
+            print(f"Uploads:  {u.get('uploaded', 0)} waiting to be edited, {u.get('processing', 0)} being edited, "
+                  f"{u.get('failed', 0)} couldn't be edited")
+            print(f"Posts:    {p.get('pending', 0)} waiting for your approval, {p.get('approved', 0)} approved, "
+                  f"{p.get('rejected', 0)} rejected")
+            print(f"Spare:    {st['spare_versions']} approved version(s) waiting for a free slot in someone's queue")
+            print(f"Versions: {portal_sync.versions_for(settings, conn)} per upload (one per affiliate, "
+                  f"max PORTAL_MAX_VERSIONS={settings.portal_max_versions})")
+            print("Team:     name             waiting / limit   posted (7 days)")
+            for t in st["team"]:
+                flag = "" if t["active"] else "  (deactivated)"
+                print(f"          {t['name']:<16} {t['waiting']:>3} / {t['max_open']:<3}        {t['posted_7d']}{flag}")
+            from onewrld import autopilot
+            print(f"Autopilot: {autopilot.state()}")
+            return 0
+        if args.action == "autopilot":
+            from onewrld import autopilot
+            choice = (args.email or "").lower()
+            if choice not in ("on", "off"):
+                print(f"Autopilot is {autopilot.state()}. Use: python -m onewrld portal autopilot on (or off)")
+                return 1
+            ok, msg = autopilot.turn_on(args.every) if choice == "on" else autopilot.turn_off()
+            print(msg)
+            return 0 if ok else 1
+        if args.action == "cap":
+            try:
+                n = int(args.name or "")
+            except ValueError:
+                print("Usage: python -m onewrld portal cap EMAIL NUMBER   (0 pauses them)")
+                return 1
+            ok = portal.set_cap(conn, args.email or "", n)
+            print(f"{args.email}: up to {max(0, min(50, n))} post(s) waiting at once." if ok
+                  else "No login with that email yet.")
+            return 0 if ok else 1
         if args.action == "setup":
             applied = portal.setup(conn)
             print("Portal set up: " + ", ".join(applied) if applied else "Portal already set up.")
@@ -612,8 +654,10 @@ def main(argv: list[str] | None = None) -> int:
     sl.add_argument("--minutes", type=int, default=120)
     sl.add_argument("--drop", action="store_true", help="include new-drop tease formats")
     pt = sub.add_parser("portal", help="affiliate portal: setup, invite, owner, members")
-    pt.add_argument("action", choices=["setup", "invite", "owner", "members", "activate", "deactivate", "sync", "retry"])
+    pt.add_argument("action", choices=["setup", "invite", "owner", "members", "activate", "deactivate", "sync", "retry",
+                                        "status", "autopilot", "cap"])
     pt.add_argument("--limit", type=int, default=5)
+    pt.add_argument("--every", type=int, default=10, help="autopilot: minutes between runs")
     pt.add_argument("email", nargs="?")
     pt.add_argument("name", nargs="?")
     pt.add_argument("--code")

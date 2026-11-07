@@ -11,6 +11,11 @@
      stays on this PC in media/portal/
 A failure marks the upload "couldn't be edited", raises an alert, and moves on.
 
+High volume (D-067): one run drains everything waiting (bounded: MAX_UPLOADS uploads or
+MAX_MINUTES, whichever comes first), makes one version per affiliate (3 to
+PORTAL_MAX_VERSIONS), never runs twice at once on the same database, and emails the owner
+when posts are waiting. `portal autopilot on` makes Windows run it every few minutes.
+
 Talks to Supabase two ways: the database directly (DATABASE_URL, same project) and the
 Storage API over HTTPS with the secret key from .env.
 """
@@ -19,6 +24,7 @@ from __future__ import annotations
 
 import json
 import mimetypes
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -32,9 +38,12 @@ from onewrld.errors import PermanentError, RetryableError
 from onewrld.logging_setup import get_logger
 
 log = get_logger(__name__)
-VERSIONS = 3            # main + 2 alternates per upload (D-065)
-BATCH = 5               # uploads handled per sync run (bounded)
+VERSIONS = 3            # fewest versions per upload: main + 2 alternates (D-065)
+BATCH = 5               # uploads claimed at a time
+MAX_UPLOADS = 50        # most uploads one run handles (D-067)
+MAX_MINUTES = 50        # one run stops claiming new uploads after this long
 STALE_MINUTES = 60      # an upload stuck "being edited" this long gets retried
+LOCK_KEY = 0x0E1D_5C1C  # any fixed number: stops two sync runs overlapping
 
 
 class Storage:
@@ -105,11 +114,19 @@ def claim(conn: psycopg.Connection, schema: str, limit: int = BATCH) -> list[dic
                 RETURNING *""", (limit,)).fetchall()
 
 
+def versions_for(settings: Settings, conn: psycopg.Connection, schema: str = "public") -> int:
+    """One version per active affiliate, at least VERSIONS, at most PORTAL_MAX_VERSIONS:
+    nobody on the team ever posts the same cut as someone else."""
+    n = conn.execute(f"SELECT count(*) AS n FROM {schema}.profiles WHERE active AND role='affiliate'"
+                     ).fetchone()["n"]
+    return max(VERSIONS, min(settings.portal_max_versions, n))
+
+
 def _render_versions(settings: Settings, conn: psycopg.Connection, clip: Path,
-                     product: str | None) -> list[dict]:
+                     product: str | None, versions: int = VERSIONS) -> list[dict]:
     from onewrld.worker import run_worker
     asset = videos.register_asset(conn, clip)
-    job_ids = videos.plan(conn, asset, VERSIONS - 1, product=product)
+    job_ids = videos.plan(conn, asset, versions - 1, product=product)
     run_worker(settings, max_jobs=len(job_ids), max_seconds=3600, only_ids=job_ids)
     return conn.execute(
         """SELECT r.* FROM render r JOIN job j ON j.idempotency_key = 'render:' || r.render_key
@@ -133,13 +150,13 @@ def retry_failed(conn: psycopg.Connection, schema: str = "public", sub_id: int |
 
 
 def process_one(settings: Settings, conn: psycopg.Connection, store: Storage, sub: dict,
-                schema: str = "public") -> int:
+                schema: str = "public", versions: int = VERSIONS) -> int:
     """Edit one upload into a pack. Returns the pack id."""
     local = settings.root / "media" / "portal" / (sub["product_handle"] or "untagged") / \
         f"{sub['id']}_{Path(sub['storage_key']).name}"
     if not local.exists():
         store.download("uploads", sub["storage_key"], local)
-    renders = _render_versions(settings, conn, local, sub["product_handle"])
+    renders = _render_versions(settings, conn, local, sub["product_handle"], versions)
     if not renders:
         raise PermanentError("no version passed the quality check")
     keys, hooks = [], []
@@ -170,29 +187,81 @@ def process_one(settings: Settings, conn: psycopg.Connection, store: Storage, su
     return pack["id"]
 
 
+def _handle(settings, conn, store, sub, schema, versions, stats) -> bool:
+    """Edit one upload; record the outcome. Returns False on network trouble (stop claiming)."""
+    try:
+        pid = process_one(settings, conn, store, sub, schema, versions)
+        stats["ready"] += 1
+        log.info(f"Upload {sub['id']} → pack {pid}")
+        return True
+    except Exception as e:  # never stop the whole run for one bad clip
+        msg = str(e)[:500]
+        status = "uploaded" if isinstance(e, RetryableError) else "failed"
+        conn.execute(f"UPDATE {schema}.submissions SET status=%s, error=%s WHERE id=%s",
+                     (status, msg, sub["id"]))
+        if status == "failed":
+            alerts.raise_alert(conn, "warn", "portal:sync",
+                               f"Upload {sub['id']} ({sub['original_name']}) couldn't be edited: {msg}")
+        stats["failed"] += 1
+        return status == "failed"
+
+
 def sync(settings: Settings, conn: psycopg.Connection, store: Storage | None = None,
-         schema: str = "public", limit: int = BATCH) -> dict:
-    from onewrld import db
-    # Preflight (M-014): never touch an upload if the engine's own database is behind.
+         schema: str = "public", limit: int = BATCH, max_uploads: int = MAX_UPLOADS,
+         max_minutes: float = MAX_MINUTES, clock=time.monotonic) -> dict:
+    """Edit everything waiting (bounded). Returns {"ready": n, "failed": m}, plus "busy": 1
+    if another sync was already running."""
+    from onewrld import db, notify, portal
+    # Preflight (M-014): never touch an upload if either database is behind.
     pending = db.pending_migrations(settings, conn)
     if pending:
         raise PermanentError("Your database needs updating first. Run: python -m onewrld migrate "
                              f"(missing: {', '.join(p.name for p in pending)})")
-    store = store or Storage(settings.supabase_url, settings.supabase_service_key)
-    studio.require_ffmpeg()
-    stats = {"ready": 0, "failed": 0}
-    for sub in claim(conn, schema, limit):
-        try:
-            pid = process_one(settings, conn, store, sub, schema)
-            stats["ready"] += 1
-            log.info(f"Upload {sub['id']} → pack {pid}")
-        except Exception as e:  # never stop the whole run for one bad clip
-            msg = str(e)[:500]
-            status = "uploaded" if isinstance(e, RetryableError) else "failed"
-            conn.execute(f"UPDATE {schema}.submissions SET status=%s, error=%s WHERE id=%s",
-                         (status, msg, sub["id"]))
-            if status == "failed":
-                alerts.raise_alert(conn, "warn", "portal:sync",
-                                   f"Upload {sub['id']} ({sub['original_name']}) couldn't be edited: {msg}")
-            stats["failed"] += 1
-    return stats
+    behind = portal.pending(conn, schema)
+    if behind:
+        raise PermanentError("The portal needs updating first. Run: python -m onewrld portal setup "
+                             f"(missing: {', '.join(behind)})")
+    if not conn.execute("SELECT pg_try_advisory_lock(%s) AS ok", (LOCK_KEY,)).fetchone()["ok"]:
+        log.info("Another portal sync is already running; skipping this one.")
+        return {"ready": 0, "failed": 0, "busy": 1}
+    try:
+        store = store or Storage(settings.supabase_url, settings.supabase_service_key)
+        studio.require_ffmpeg()
+        stats = {"ready": 0, "failed": 0}
+        versions = versions_for(settings, conn, schema)
+        deadline = clock() + max_minutes * 60
+        healthy = True
+        while healthy and clock() < deadline:
+            room = max_uploads - stats["ready"] - stats["failed"]
+            batch = claim(conn, schema, min(limit, room)) if room > 0 else []
+            if not batch:
+                break
+            for sub in batch:
+                healthy = _handle(settings, conn, store, sub, schema, versions, stats) and healthy
+        conn.execute(f"SELECT {schema}.fill_queues()")    # new teammates get their queue filled
+        if stats["ready"]:
+            waiting = conn.execute(f"SELECT count(*) AS n FROM {schema}.packs WHERE status='pending'"
+                                   ).fetchone()["n"]
+            notify.portal_waiting_email(settings, conn, waiting, stats["ready"])
+        return stats
+    finally:
+        conn.execute("SELECT pg_advisory_unlock(%s)", (LOCK_KEY,))
+
+
+def status(conn: psycopg.Connection, schema: str = "public") -> dict:
+    """The whole pipeline at a glance, for `portal status`."""
+    uploads = {r["status"]: r["n"] for r in conn.execute(
+        f"SELECT status, count(*) AS n FROM {schema}.submissions GROUP BY 1")}
+    packs = {r["status"]: r["n"] for r in conn.execute(
+        f"SELECT status, count(*) AS n FROM {schema}.packs GROUP BY 1")}
+    spare = conn.execute(
+        f"""SELECT coalesce(sum(1 + coalesce(array_length(p.alt_video_keys, 1), 0)
+                              - (SELECT count(*) FROM {schema}.assignments a WHERE a.pack_id = p.id)), 0)::int AS n
+            FROM {schema}.packs p WHERE p.status = 'approved'""").fetchone()["n"]
+    team = conn.execute(
+        f"""SELECT pr.display_name AS name, pr.max_open, pr.active,
+                   count(a.*) FILTER (WHERE a.status = 'assigned') AS waiting,
+                   count(a.*) FILTER (WHERE a.status = 'posted' AND a.posted_at > now() - interval '7 days') AS posted_7d
+            FROM {schema}.profiles pr LEFT JOIN {schema}.assignments a ON a.affiliate_id = pr.id
+            WHERE pr.role = 'affiliate' GROUP BY pr.id ORDER BY pr.display_name""").fetchall()
+    return {"uploads": uploads, "packs": packs, "spare_versions": max(0, spare), "team": team}

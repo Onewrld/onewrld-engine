@@ -401,6 +401,15 @@ def variant_specs(base: RenderSpec, captions: list[str], n: int, src_seconds: fl
         dict(crop_x=0.7),
         dict(look="bw", crop_x=0.4, zoom=1.1),
     ]
+    # Versions 7-10 (high-volume portal, D-067): start later in the clip as well, so even a
+    # big team never gets two versions that open on the same frame.
+    later = round(min(src_seconds * 0.2, max(0.0, src_seconds - short)), 2)
+    recipes += [
+        dict(start=later, max_seconds=short, crop_x=0.6),
+        dict(start=later, look="bw", zoom=1.12, crop_x=0.45),
+        dict(crop_x=0.2, zoom=1.15),
+        dict(start=later, look="bw", crop_x=0.8, max_seconds=short),
+    ]
     specs = []
     for i, r in enumerate(recipes[: n + 1]):
         specs.append(replace(base, caption=pick(i), **r))

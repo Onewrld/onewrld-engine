@@ -172,3 +172,89 @@ def test_retry_puts_failed_uploads_back(team):
     assert portal_sync.retry_failed(conn, s) == 1
     row = conn.execute(f"SELECT status, error FROM {s}.submissions WHERE id=%s", (a,)).fetchone()
     assert row["status"] == "uploaded" and row["error"] is None
+
+
+# --- high volume (D-067) ----------------------------------------------------------------
+
+def test_one_run_drains_everything_waiting_within_its_bounds(team, db_settings, monkeypatch):
+    conn, s, ids = team
+    subs = [_upload(conn, s, ids["blake"], f"{i}.mp4") for i in range(7)]
+    done = []
+    monkeypatch.setattr(portal_sync, "process_one", lambda st, c, store, sub, schema, v: done.append(sub["id"]) or 1)
+    monkeypatch.setattr(studio, "require_ffmpeg", lambda: None)
+    assert portal_sync.sync(db_settings, conn, FakeStorage(), schema=s, limit=2) == {"ready": 7, "failed": 0}
+    assert sorted(done) == sorted(subs)                                  # 7 uploads, batches of 2, one run
+    more = [_upload(conn, s, ids["blake"], f"m{i}.mp4") for i in range(5)]
+    assert portal_sync.sync(db_settings, conn, FakeStorage(), schema=s, max_uploads=3)["ready"] == 3
+    left = conn.execute(f"SELECT count(*) AS n FROM {s}.submissions WHERE status='uploaded'").fetchone()["n"]
+    assert left == 2 and set(more) & set(done)                           # cap respected; rest next run
+
+
+def test_network_trouble_stops_claiming_more(team, db_settings, monkeypatch):
+    conn, s, ids = team
+    for i in range(6):
+        _upload(conn, s, ids["blake"], f"{i}.mp4")
+    calls = []
+
+    def flaky(*a):
+        calls.append(1)
+        raise RetryableError("Supabase busy")
+    monkeypatch.setattr(portal_sync, "process_one", flaky)
+    monkeypatch.setattr(studio, "require_ffmpeg", lambda: None)
+    portal_sync.sync(db_settings, conn, FakeStorage(), schema=s, limit=2)
+    assert len(calls) == 2                                               # one batch, then it stops
+    assert conn.execute(f"SELECT count(*) AS n FROM {s}.submissions WHERE status='uploaded'").fetchone()["n"] == 6
+
+
+def test_two_syncs_never_run_at_once(team, db_settings, monkeypatch):
+    import psycopg
+    conn, s, ids = team
+    _upload(conn, s, ids["blake"])
+    monkeypatch.setattr(studio, "require_ffmpeg", lambda: None)
+    with psycopg.connect(db_settings.database_url, autocommit=True) as other:
+        other.execute("SELECT pg_advisory_lock(%s)", (portal_sync.LOCK_KEY,))   # a run in progress
+        assert portal_sync.sync(db_settings, conn, FakeStorage(), schema=s) == {"ready": 0, "failed": 0, "busy": 1}
+    row = conn.execute(f"SELECT status FROM {s}.submissions").fetchone()
+    assert row["status"] == "uploaded"
+
+
+def test_one_version_per_affiliate_within_limits(team, db_settings):
+    import dataclasses
+    conn, s, ids = team
+    assert portal_sync.versions_for(db_settings, conn, s) == 3              # 2 affiliates: still 3
+    for i in range(8):
+        conn.execute(f"INSERT INTO {s}.profiles (id, email, display_name) VALUES (gen_random_uuid(), %s, 'X')",
+                     (f"x{i}@example.com",))
+    assert portal_sync.versions_for(db_settings, conn, s) == 6              # 10 affiliates, default max 6
+    big = dataclasses.replace(db_settings, portal_max_versions=10)
+    assert portal_sync.versions_for(big, conn, s) == 10
+
+
+def test_sync_refuses_when_portal_is_behind(team, db_settings):
+    conn, s, ids = team
+    conn.execute("DELETE FROM schema_migrations WHERE name=%s", (f"portal:{s}:0004_volume.sql",))
+    with pytest.raises(PermanentError, match="portal setup"):
+        portal_sync.sync(db_settings, conn, FakeStorage(), schema=s)
+
+
+def test_status_shows_the_whole_pipeline(team):
+    conn, s, ids = team
+    _upload(conn, s, ids["blake"])
+    st = portal_sync.status(conn, s)
+    assert st["uploads"] == {"uploaded": 1} and st["spare_versions"] == 0
+    assert {t["name"]: (t["waiting"], t["max_open"]) for t in st["team"]} == {"Blake": (0, 5), "Jess": (0, 5)}
+
+
+def test_waiting_email_at_most_once_an_hour(db_settings, monkeypatch):
+    import dataclasses
+    from onewrld import db, notify
+    sent = []
+    monkeypatch.setattr(notify, "send_email", lambda st, subj, body: sent.append((subj, body)))
+    st = dataclasses.replace(db_settings, smtp_user="a@x.com", smtp_app_password="p", alert_email="a@x.com",
+                             portal_url="https://team.example")
+    with db.connect(db_settings) as conn:
+        conn.execute("DELETE FROM notification")
+        assert notify.portal_waiting_email(st, conn, 4, 2) == "sent"
+        assert notify.portal_waiting_email(st, conn, 5, 1) == "held"
+        conn.execute("DELETE FROM notification")
+    assert "4 post(s) waiting" in sent[0][0] and "https://team.example" in sent[0][1]

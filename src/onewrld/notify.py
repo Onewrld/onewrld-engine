@@ -120,6 +120,35 @@ def flush_alert_emails(settings: Settings, conn: psycopg.Connection) -> str:
         conn.execute("SELECT pg_advisory_unlock(%s)", (ADVISORY_LOCK_KEY,))
 
 
+def portal_waiting_email(settings: Settings, conn: psycopg.Connection, waiting: int,
+                         new: int) -> str:
+    """Tell the owner posts are waiting for approval. At most one of these an hour, and
+    within the overall email caps. Returns: sent / not_configured / held / failed."""
+    if not settings.email_configured or waiting <= 0:
+        return "not_configured" if not settings.email_configured else "held"
+    recent = conn.execute(
+        """SELECT count(*) AS n FROM notification WHERE channel = 'email'
+           AND subject LIKE '%%waiting for your approval%%' AND sent_at > now() - interval '1 hour'"""
+    ).fetchone()["n"]
+    hour, day = _sent_counts(conn)
+    if recent or hour >= EMAILS_PER_HOUR or day >= EMAILS_PER_DAY:
+        return "held"
+    subject = f"[ONEWRLD] {waiting} post(s) waiting for your approval"
+    body = "\n".join([
+        f"{new} new post(s) were just edited from your team's uploads.",
+        f"{waiting} in total are waiting on your Approve screen.", "",
+        f"Open the portal: {settings.portal_url}" if settings.portal_url else
+        "Open your portal (add PORTAL_URL to .env to get a link here).", "",
+        "Approve them in bulk; the system hands the versions out to your team by itself."])
+    try:
+        send_email(settings, subject, body)
+    except (PermanentError, RetryableError) as e:
+        log.warning(f"Waiting-posts email failed: {e}")
+        return "failed"
+    _record(conn, subject, [])
+    return "sent"
+
+
 def send_test_email(settings: Settings, conn: psycopg.Connection | None = None) -> None:
     subject = "[ONEWRLD] Test email: alerts are working"
     send_email(settings, subject,

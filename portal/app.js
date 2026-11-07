@@ -179,36 +179,58 @@ function uploadOne(file, productHandle, note, list) {
 // ---------- affiliates: ready to post ----------
 async function showReady() {
   const { data, error } = await sb.from("assignments")
-    .select("id,status,caption_final,posted_url,assigned_at,video_key,hook_text,pack:packs(video_key,hook_text)")
-    .eq("affiliate_id", me.user.id).order("assigned_at", { ascending: false });
+    .select("id,status,caption_final,posted_url,assigned_at,posted_at,video_key,hook_text,pack:packs(video_key,hook_text)")
+    .eq("affiliate_id", me.user.id).order("assigned_at", { ascending: true });
   if (error) throw error;
   const todo = data.filter((a) => a.status !== "posted");
+  const done = data.filter((a) => a.status === "posted").reverse();
   setCount("ready", todo.length);
+  const weekAgo = Date.now() - 7 * 864e5;
+  const thisWeek = done.filter((a) => a.posted_at && new Date(a.posted_at).getTime() > weekAgo).length;
   if (!data.length) return app.replaceChildren(el("div", { class: "card" }, el("h1", {}, "Ready to post"),
-    el("p", { class: "muted" }, "Nothing yet. When Adam approves a post for you, it shows up here.")));
-  const cards = [];
-  for (const a of data) {
+    el("p", { class: "muted" }, "Nothing yet. When Adam approves posts, they show up here by themselves.")));
+  const keyOf = (a) => a.video_key || a.pack.video_key;   // each person gets their own version
+  const card = (a, i) => {
     const video = el("video", { controls: true, playsinline: true, preload: "metadata" });
-    const dl = el("a", { class: "button" }, "Download video");
-    const key = a.video_key || a.pack.video_key;   // each person gets their own version
-    signed("packs", key).then((u) => { if (u) video.src = u; });
-    signed("packs", key, true).then((u) => { if (u) dl.href = u; });
+    const dl = el("a", { class: "button" }, "Download");
+    signed("packs", keyOf(a)).then((u) => { if (u) video.src = u; });
+    signed("packs", keyOf(a), true).then((u) => { if (u) dl.href = u; });
     const url = el("input", { type: "url", placeholder: "Link to your post (optional)", value: a.posted_url || "" });
-    const done = el("button", { class: a.status === "posted" ? "secondary" : "primary", onclick: async () => {
-      const { data: ok, error: e } = await sb.rpc("mark_posted", { p_assignment: a.id, p_url: url.value.trim() });
-      if (e || !ok) return fail(e || "Couldn't update");
-      toast("Marked as posted"); show("ready");
+    const doneBtn = el("button", { class: a.status === "posted" ? "secondary" : "primary", onclick: async (e) => {
+      e.target.disabled = true;
+      const { data: ok, error: err } = await sb.rpc("mark_posted", { p_assignment: a.id, p_url: url.value.trim() });
+      if (err || !ok) { e.target.disabled = false; return fail(err || "Couldn't update"); }
+      toast(a.status === "posted" ? "Link saved" : "Posted. Next one is up."); show("ready");
     } }, a.status === "posted" ? "Update link" : "I posted it");
-    cards.push(el("div", { class: "card" },
-      el("div", { class: "row" }, statusPill(a.status), el("span", { class: "muted" }, when(a.assigned_at))),
+    return el("div", { class: "card", "data-assignment": a.id },
+      el("div", { class: "row" }, a.status === "posted" ? statusPill("posted") : el("strong", {}, `#${i + 1}`),
+        el("span", { class: "muted" }, when(a.assigned_at))),
       video,
       el("label", {}, "Caption (already has your link, code and #ad)"),
       el("div", { class: "caption" }, a.caption_final),
       el("div", { class: "row" }, dl, el("button", { class: "secondary", onclick: () =>
         navigator.clipboard.writeText(a.caption_final).then(() => toast("Caption copied")) }, "Copy caption")),
-      el("label", {}, "After you post"), url, el("p"), done));
-  }
-  app.replaceChildren(el("h1", {}, "Ready to post"), ...cards);
+      el("label", {}, "After you post"), url, el("p"), doneBtn);
+  };
+  const downloadAll = el("button", { class: "secondary", onclick: async (e) => {
+    e.target.disabled = true;
+    for (const a of todo) {           // one after another: browsers block a burst of downloads
+      const u = await signed("packs", keyOf(a), true);
+      if (u) { const link = el("a", { href: u, download: "" }); document.body.append(link); link.click(); link.remove(); }
+      await new Promise((r) => setTimeout(r, 900));
+    }
+    e.target.disabled = false; toast(`${todo.length} video(s) downloading`);
+  } }, `Download all (${todo.length})`);
+  const head = el("div", { class: "card" },
+    el("h1", {}, `Ready to post (${todo.length})`),
+    el("p", { class: "muted" }, todo.length
+      ? "Post them in order, one at a time across your accounts. Each time you mark one posted, the next one shows up."
+      : "All done. New posts appear here as soon as Adam approves more."),
+    el("p", {}, el("strong", {}, String(thisWeek)), el("span", { class: "muted" }, " posted in the last 7 days")),
+    todo.length > 1 ? downloadAll : null);
+  const posted = done.length ? el("details", { class: "card" },
+    el("summary", {}, `Posted (${done.length})`), ...done.map((a) => card(a, 0))) : null;
+  app.replaceChildren(...[head, ...todo.map(card), posted].filter(Boolean));
 }
 
 async function showMine() {
@@ -222,62 +244,135 @@ async function showMine() {
 }
 
 // ---------- owner: approve and send ----------
+// Built for volume (D-067): one post at a time, big buttons (or keys A / R / S), and the
+// database hands each approved post's versions out to the team by itself. "Approve all"
+// clears the whole queue in one tap. "Choose people" is still there for hand-picking.
 async function team() {
-  const { data, error } = await sb.from("profiles").select("id,display_name,role,active,discount_code")
+  const { data, error } = await sb.from("profiles").select("id,display_name,role,active,discount_code,max_open")
     .eq("active", true).order("display_name");
   if (error) throw error;
   return data;
 }
 
+const REJECT_REASONS = ["Weak hook", "Bad look", "Off brand", "Low quality"];
+let approveKeys = null;
+
 async function showApprove() {
   const [{ data: packs, error }, people] = await Promise.all([
-    sb.from("packs").select("id,hook_text,caption_base,video_key,alt_video_keys,created_at,submission:submissions(affiliate_id,original_name)")
+    sb.from("packs").select("id,hook_text,alt_hooks,caption_base,video_key,alt_video_keys,created_at,submission:submissions(affiliate_id,original_name)")
       .eq("status", "pending").order("created_at", { ascending: true }),
     team()]);
   if (error) throw error;
-  setCount("approve", packs.length);
-  if (!packs.length) return app.replaceChildren(el("div", { class: "card" }, el("h1", {}, "Approve"),
-    el("p", { class: "muted" }, "Nothing waiting. New uploads show up here once your PC has edited them.")));
   const name = Object.fromEntries(people.map((p) => [p.id, p.display_name]));
-  const cards = packs.map((pk) => {
+  const affiliates = people.filter((p) => p.role === "affiliate");
+  const queue = packs.slice();
+  let pos = 0, approved = 0, sent = 0, rejected = 0;
+  if (approveKeys) document.removeEventListener("keydown", approveKeys);
+
+  const remaining = () => queue.length;
+  const done = (msg) => {
+    setCount("approve", remaining());
+    if (pos >= queue.length) pos = 0;
+    render(msg);
+  };
+  async function approve(ids) {
+    let a = 0, s = 0;
+    for (let i = 0; i < ids.length; i += 200) {                  // the database takes 200 at a time
+      const { data: r, error: err } = await sb.rpc("approve_packs", { p_packs: ids.slice(i, i + 200) });
+      if (err) { fail(err); break; }
+      a += r.approved; s += r.sent;
+    }
+    approved += a; sent += s;
+    for (const id of ids) { const k = queue.findIndex((p) => p.id === id); if (k >= 0) { queue.splice(k, 1); if (k < pos) pos--; } }
+    return [a, s];
+  }
+  async function reject(pk, reason) {
+    const { error: err } = await sb.rpc("reject_packs", { p_packs: [pk.id], p_reason: reason });
+    if (err) return fail(err);
+    rejected++; queue.splice(queue.indexOf(pk), 1); done("Rejected: " + reason);
+  }
+
+  function render(msg) {
+    if (msg) toast(msg);
+    const summary = approved || rejected
+      ? el("p", { class: "muted" }, `This session: ${approved} approved (${sent} handed out), ${rejected} rejected.`) : null;
+    if (!queue.length) {
+      return app.replaceChildren(el("div", { class: "card" }, el("h1", {}, "Approve"),
+        el("p", { class: "muted" }, "Nothing waiting. New uploads show up here once your PC has edited them."), summary));
+    }
+    const pk = queue[pos];
     const uploader = pk.submission?.affiliate_id;
-    const boxes = people.filter((p) => p.role === "affiliate").map((p) => {
-      const cb = el("input", { type: "checkbox", value: p.id, checked: p.id === uploader });
-      return el("label", {}, cb, p.display_name);
-    });
-    const video = el("video", { controls: true, playsinline: true, preload: "metadata" });
-    signed("packs", pk.video_key).then((u) => { if (u) video.src = u; });
-    const chosen = () => boxes.map((b) => b.querySelector("input")).filter((i) => i.checked).map((i) => i.value);
-    const card = el("div", { class: "card", "data-pack": pk.id },
-      el("p", { class: "muted" }, `From ${name[uploader] || "the team"} · ${pk.submission?.original_name || ""}`),
-      video,
-      pk.hook_text ? el("p", { class: "hook" }, pk.hook_text) : null,
-      (pk.alt_video_keys || []).length ? el("p", { class: "muted" },
-        `${1 + pk.alt_video_keys.length} versions: each person you send it to gets a different one.`) : null,
-      el("div", { class: "caption" }, pk.caption_base),
+    const keys = [pk.video_key, ...(pk.alt_video_keys || [])];
+    const hooks = [pk.hook_text, ...(pk.alt_hooks || [])];
+    const video = el("video", { controls: true, playsinline: true, autoplay: true, muted: true, preload: "auto" });
+    const hookLine = el("p", { class: "hook" }, hooks[0] || "");
+    const chips = keys.map((k, i) => el("button", { class: "chip" + (i === 0 ? " on" : ""), onclick: (e) => {
+      for (const c of chips) c.classList.remove("on");
+      e.target.classList.add("on"); hookLine.textContent = hooks[i] || hooks[0] || "";
+      signed("packs", k).then((u) => { if (u) video.src = u; });
+    } }, `V${i + 1}`));
+    signed("packs", keys[0]).then((u) => { if (u) video.src = u; });
+    const next = queue[(pos + 1) % queue.length];                // warm up the next video
+    if (next && next !== pk) signed("packs", next.video_key);
+
+    const reasons = el("div", { class: "row", hidden: true },
+      ...REJECT_REASONS.map((r) => el("button", { class: "chip", onclick: () => reject(pk, r) }, r)),
+      el("button", { class: "chip", onclick: () => { const r = prompt("Why? (one line, helps the system learn)"); if (r) reject(pk, r); } }, "Other…"));
+    const boxes = affiliates.map((p) => el("label", {},
+      el("input", { type: "checkbox", value: p.id, checked: p.id === uploader }), p.display_name));
+    const picker = el("div", { hidden: true },
       el("div", { class: "row" }, el("strong", {}, "Send to:"),
         el("button", { class: "secondary", onclick: () => boxes.forEach((b) => { b.querySelector("input").checked = true; }) }, "Everyone")),
       el("div", { class: "people" }, boxes),
-      el("div", { class: "row" },
-        el("button", { class: "primary", onclick: async (e) => {
-          const ids = chosen();
-          if (!ids.length) return toast("Tick at least one person");
-          e.target.disabled = true;
-          const { data: n, error: err } = await sb.rpc("approve_pack", { p_pack: pk.id, p_affiliates: ids });
-          if (err) { e.target.disabled = false; return fail(err); }
-          toast(`Approved · sent to ${n} ${n === 1 ? "person" : "people"}`); card.remove();
-          setCount("approve", app.querySelectorAll("[data-pack]").length);
-        } }, "Approve & send"),
-        el("button", { class: "danger", onclick: async () => {
-          const reason = prompt("Why? (one line, helps the system learn)");
-          if (reason === null) return;
-          const { error: err } = await sb.rpc("reject_pack", { p_pack: pk.id, p_reason: reason });
-          if (err) return fail(err);
-          toast("Rejected"); card.remove(); setCount("approve", app.querySelectorAll("[data-pack]").length);
-        } }, "Reject")));
-    return card;
-  });
-  app.replaceChildren(el("h1", {}, `Approve (${packs.length})`), ...cards);
+      el("button", { class: "primary", onclick: async (e) => {
+        const ids = boxes.map((b) => b.querySelector("input")).filter((i) => i.checked).map((i) => i.value);
+        if (!ids.length) return toast("Tick at least one person");
+        e.target.disabled = true;
+        const { data: n, error: err } = await sb.rpc("approve_pack", { p_pack: pk.id, p_affiliates: ids });
+        if (err) { e.target.disabled = false; return fail(err); }
+        approved++; sent += n; queue.splice(pos, 1);
+        done(`Approved · sent to ${n} ${n === 1 ? "person" : "people"}`);
+      } }, "Approve & send to these"));
+
+    const approveOne = async () => { const [, s] = await approve([pk.id]); done(`Approved · ${s} handed out`); };
+    const showReasons = () => { reasons.hidden = !reasons.hidden; };
+    const skip = () => { pos = (pos + 1) % queue.length; render(); };
+    approveKeys = (e) => {
+      if (currentTab !== "approve" || /INPUT|TEXTAREA/.test(e.target.tagName) || e.metaKey || e.ctrlKey) return;
+      const k = e.key.toLowerCase();
+      if (k === "a") approveOne(); else if (k === "r") showReasons(); else if (k === "s" || k === "arrowright") skip();
+    };
+    document.addEventListener("keydown", approveKeys);
+
+    const all = el("button", { class: "secondary", onclick: async (e) => {
+      if (!confirm(`Approve all ${queue.length} posts? Each one is handed out to your team automatically.`)) return;
+      e.target.disabled = true;
+      const [a, s] = await approve(queue.map((p) => p.id));
+      done(`Approved ${a} · ${s} handed out`);
+    } }, `Approve all (${queue.length})`);
+
+    app.replaceChildren(...[
+      el("div", { class: "row spread" }, el("h1", {}, `Approve (${queue.length})`), all),
+      summary,
+      el("div", { class: "card", "data-pack": pk.id },
+        el("div", { class: "row spread" },
+          el("span", { class: "muted" }, `${pos + 1} of ${queue.length} · from ${name[uploader] || "the team"} · ${pk.submission?.original_name || ""}`)),
+        video,
+        keys.length > 1 ? el("div", { class: "row" }, el("span", { class: "muted" },
+          `${keys.length} versions, one per person:`), ...chips) : null,
+        hookLine,
+        el("div", { class: "caption" }, pk.caption_base),
+        el("div", { class: "decide" },
+          el("button", { class: "danger", onclick: showReasons }, "Reject"),
+          el("button", { class: "secondary", onclick: skip }, "Skip"),
+          el("button", { class: "primary", onclick: approveOne }, "Approve")),
+        reasons,
+        el("p", { class: "muted small" }, "Keys: A approve · R reject · S skip. Approved posts go out to the team by themselves."),
+        el("button", { class: "link", onclick: () => { picker.hidden = !picker.hidden; } }, "Choose people instead"),
+        picker)].filter(Boolean));
+  }
+  setCount("approve", queue.length);
+  render();
 }
 
 async function showAllUploads() {
@@ -294,10 +389,36 @@ async function showAllUploads() {
 }
 
 async function showTeam() {
-  const people = await team();
+  const [people, { data: rows, error }] = await Promise.all([team(),
+    sb.from("assignments").select("affiliate_id,status,posted_at").order("assigned_at", { ascending: false }).limit(5000)]);
+  if (error) throw error;
+  const weekAgo = Date.now() - 7 * 864e5;
+  const stat = {};
+  for (const r of rows) {
+    const s = stat[r.affiliate_id] ||= { waiting: 0, week: 0 };
+    if (r.status === "assigned") s.waiting++;
+    else if (r.posted_at && new Date(r.posted_at).getTime() > weekAgo) s.week++;
+  }
+  const line = (p) => {
+    if (p.role === "owner") return el("div", { class: "list-item" }, el("span", {}, p.display_name), el("span", { class: "muted" }, "owner"));
+    const s = stat[p.id] || { waiting: 0, week: 0 };
+    let max = p.max_open ?? 5;
+    const label = el("span", { class: "cap" }, `${s.waiting} / ${max}`);
+    const change = (d) => async () => {
+      const n = Math.max(0, Math.min(50, max + d));
+      const { error: err } = await sb.rpc("set_max_open", { p_affiliate: p.id, p_max: n });
+      if (err) return fail(err);
+      max = n; toast(n ? `${p.display_name}: up to ${n} waiting` : `${p.display_name}: paused`); showTeam();
+    };
+    return el("div", { class: "list-item", "data-person": p.id },
+      el("span", {}, p.display_name, el("br"), el("span", { class: "muted small" },
+        `${p.discount_code || "no code"} · ${s.week} posted this week`)),
+      el("span", { class: "row" }, el("button", { class: "chip", onclick: change(-1) }, "−"), label,
+        el("button", { class: "chip", onclick: change(1) }, "+")));
+  };
   app.replaceChildren(el("h1", {}, "Team"), el("div", { class: "card" },
-    people.map((p) => el("div", { class: "list-item" }, el("span", {}, p.display_name),
-      el("span", { class: "muted" }, p.role === "owner" ? "owner" : (p.discount_code || "no code")))),
+    el("p", { class: "muted" }, "Waiting / limit: posts in each person's queue, and the most they can have at once. 0 pauses them."),
+    people.map(line),
     el("p", { class: "muted" }, 'Add someone from your PC: python -m onewrld portal invite EMAIL "Name" --code CODE')));
 }
 

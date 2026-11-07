@@ -144,3 +144,11 @@ def test_two_sentences_get_one_line_each(tmp_path):
     assert overlays.SAFE.contains(box)
     # two lines tall (one per sentence), not three
     assert box.bottom - box.top < 64 * 1.25 * 2 + 1
+
+
+def test_up_to_ten_distinct_versions_for_a_big_team():  # D-067
+    specs = studio.variant_specs(studio.RenderSpec(), ["a", "b", "c"], 9, 20.0)
+    assert len(specs) == 10 and len({s.key("x") for s in specs}) == 10
+    looks = {(s.look, s.crop_x, s.zoom, s.start, s.max_seconds) for s in specs}
+    assert len(looks) == 10                                    # each differs in the picture, not just text
+    assert all(s.start + 1 < 20.0 for s in specs)
